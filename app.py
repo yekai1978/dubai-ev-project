@@ -189,7 +189,7 @@ edited_df = st.data_editor(
         "人均年薪 (AED)": st.column_config.NumberColumn(format="%d", help="基准年薪：75,000 AED")
     },
     hide_index=True,
-    use_container_width=True
+    width="stretch"
 )
 
 # ==========================================
@@ -284,7 +284,7 @@ else:
 st.markdown("#### 💰 现金流明细表 (AED)")
 st.dataframe(
     df_res.style.format("{:,.0f}", subset=["营收", "成本", "税前净利", "税金", "税后净利", "自由现金流", "累计现金流", "资金成本"]),
-    use_container_width=True
+    width="stretch"
 )
 
 st.markdown("#### 📈 累计现金流曲线 (J-Curve)")
