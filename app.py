@@ -247,7 +247,11 @@ for index, row in edited_df.iterrows():
     if payback_year is None and cumulative_cash >= 0:
         prev_cash = results[-1]["累计现金流"]
         if net_profit > 0:
-            payback_year = (year_idx) + (abs(prev_cash) / net_profit)
+            # 防止除零错误
+            if net_profit < 1:
+                 payback_year = year_idx + 1
+            else:
+                payback_year = (year_idx) + (abs(prev_cash) / net_profit)
         else:
             payback_year = year_idx + 1
 
@@ -276,10 +280,10 @@ m1.metric("💰 初始总投资 (CAPEX)", f"{total_capex:,.0f}")
 m2.metric("💸 运营期总净利 (税后)", f"{df_res['税后净利'].sum():,.0f}")
 m3.metric("📉 总资金成本", f"{df_res['资金成本'].sum():,.0f}")
 
-if payback_year:
+if payback_year and payback_year <= years_duration + 1:
     m4.metric("⏱️ 动态回本 (含Year 0)", f"{payback_year:.1f} 年", delta="盈利", delta_color="normal")
 else:
-    m4.metric("⏱️ 动态回本 (含Year 0)", "未回本", delta="风险", delta_color="inverse")
+    m4.metric("⏱️ 动态回本 (含Year 0)", "未回本或超出测算期", delta="风险", delta_color="inverse")
 
 st.markdown("#### 💰 现金流明细表 (AED)")
 st.dataframe(
@@ -288,7 +292,7 @@ st.dataframe(
 )
 
 st.markdown("#### 📈 累计现金流曲线 (J-Curve)")
-st.line_chart(df_res.set_index("年份")["累计现金流"])
+st.line_chart(df_res.set_index("年份")["累计现金流"], width=0)
 
 # --- 新增：数据存取中心 ---
 st.markdown("---")
