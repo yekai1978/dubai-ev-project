@@ -10,7 +10,7 @@ import matplotlib.font_manager as fm
 # ==========================================
 PAGE_CONFIG = {
     "layout": "wide",
-    "page_title": "迪拜新能源超充投资模型 V10.0 Ultimate",
+    "page_title": "迪拜新能源超充投资模型 V10.1 Fixed",
     "page_icon": "🇦🇪",
     "initial_sidebar_state": "expanded" # 默认展开侧边栏以提示用户
 }
@@ -218,9 +218,6 @@ def calculate_financial_model(edited_df, total_capex, inputs):
         net_profit = ebt - tax_amount # 净利润
         
         # 6. 现金流计算 (自由现金流 FCF = 净利润 + 折旧)
-        # *重要*: 资金成本(利息)已经在EBT中扣除，属于融资活动，标准FCF定义通常不加回利息，
-        # 但对于项目投资回报测算，我们关注的是项目产生的用于偿还债务和回报股东的现金流。
-        # 这里采用 FCFE (股权自由现金流) 的简化近似：净利润 + 折旧
         free_cash_flow = net_profit + current_depreciation
         
         cumulative_cash += free_cash_flow
@@ -250,7 +247,7 @@ def render_header():
     st.markdown(CSS_STYLES, unsafe_allow_html=True)
     st.markdown("""
         <div class="main-header-container">
-            <div class="main-title">🇦🇪 迪拜新能源超充站 · 投资测算模型 (V10.0 Ultimate)</div>
+            <div class="main-title">🇦🇪 迪拜新能源超充站 · 投资测算模型 (V10.1 Ultimate)</div>
             <div class="sub-title">Financial Model & ROI Analysis | 动态电价模型 | 折旧抵税 | 交互体验升级</div>
         </div>
     """, unsafe_allow_html=True)
@@ -278,56 +275,61 @@ def render_sidebar_content(years_duration):
         
         st.divider()
 
-        # --- 后台基准配置区 ---
+        # --- 后台基准配置区 (已修复 MaxValue 错误) ---
         st.subheader("⚙️ 后台基准配置")
         st.caption("基于旗舰站点的供应链与财务参数设定。")
         
         inputs = {}
         with st.expander("🏗️ **CAPEX 明细 (基建设备)**", expanded=False):
             st.markdown("**1. 核心设备**")
-            inputs['pile_power_kw'] = st.number_input("主机功率 (kW)", 480, 20)
-            inputs['guns_per_pile'] = st.number_input("单机枪数 (把)", 6, 1)
-            inputs['price_pile_unit'] = st.number_input("主机单价 (AED)", 200000, 5000)
+            # 【关键修复】显式指定 min_value 和 max_value，并使用关键字参数
+            inputs['pile_power_kw'] = st.number_input("主机功率 (kW)", value=480, step=20, min_value=0, max_value=2000)
+            inputs['guns_per_pile'] = st.number_input("单机枪数 (把)", value=6, step=1, min_value=1, max_value=20)
+            inputs['price_pile_unit'] = st.number_input("主机单价 (AED)", value=200000, step=5000, min_value=0, max_value=2000000)
+            
             trans_type = st.selectbox("变电站规格", ["1000 kVA", "1500 kVA"])
             inputs['trans_val'] = 1000 if "1000" in trans_type else 1500
-            inputs['price_trans_unit'] = st.number_input("变电站单价 (AED)", (200000 if inputs['trans_val'] == 1000 else 250000))
+            # 计算默认变电站价格
+            default_trans_price = (200000 if inputs['trans_val'] == 1000 else 250000)
+            inputs['price_trans_unit'] = st.number_input("变电站单价 (AED)", value=default_trans_price, step=5000, min_value=0, max_value=2000000)
             
             st.divider()
             st.markdown("**2. 电力与土建**")
-            inputs['cost_dewa_conn'] = st.number_input("DEWA接入费", 200000)
-            inputs['cost_hv_cable'] = st.number_input("高压电缆", 20000)
-            inputs['cost_lv_cable'] = st.number_input("低压电缆", 80000)
-            inputs['cost_civil_work'] = st.number_input("土建施工", 150000)
-            inputs['cost_canopy'] = st.number_input("遮阳棚品牌", 80000)
-            inputs['cost_design'] = st.number_input("设计顾问", 40000)
+            inputs['cost_dewa_conn'] = st.number_input("DEWA接入费", value=200000, step=10000, min_value=0, max_value=2000000)
+            inputs['cost_hv_cable'] = st.number_input("高压电缆", value=20000, step=1000, min_value=0, max_value=500000)
+            inputs['cost_lv_cable'] = st.number_input("低压电缆", value=80000, step=5000, min_value=0, max_value=500000)
+            inputs['cost_civil_work'] = st.number_input("土建施工", value=150000, step=10000, min_value=0, max_value=2000000)
+            inputs['cost_canopy'] = st.number_input("遮阳棚品牌", value=80000, step=5000, min_value=0, max_value=1000000)
+            inputs['cost_design'] = st.number_input("设计顾问", value=40000, step=5000, min_value=0, max_value=500000)
             
             st.divider()
             st.markdown("**3. 弱电与杂项**")
-            cost_cctv = st.number_input("视频监控", 25000)
-            cost_locks = st.number_input("智能地锁", 30000)
-            cost_network = st.number_input("站内网络", 15000)
+            cost_cctv = st.number_input("视频监控", value=25000, step=1000, min_value=0, max_value=200000)
+            cost_locks = st.number_input("智能地锁", value=30000, step=1000, min_value=0, max_value=200000)
+            cost_network = st.number_input("站内网络", value=15000, step=1000, min_value=0, max_value=200000)
             inputs['cost_weak_current_total'] = cost_cctv + cost_locks + cost_network
-            inputs['other_cost_1'] = st.number_input("前期开办费", 30000)
-            inputs['other_cost_2'] = st.number_input("不可预见金", 20000)
+            inputs['other_cost_1'] = st.number_input("前期开办费", value=30000, step=5000, min_value=0, max_value=500000)
+            inputs['other_cost_2'] = st.number_input("不可预见金", value=20000, step=5000, min_value=0, max_value=500000)
 
         with st.expander("🛠️ **OPEX 基准 (固定运营)**", expanded=False):
-            inputs['base_rent'] = st.number_input("车位租金 (AED/年)", 96000)
-            inputs['base_it_saas'] = st.number_input("IT/SaaS (AED/年)", 50000)
-            inputs['base_marketing'] = st.number_input("广告营销 (AED/年)", 50000)
-            inputs['base_maintenance'] = st.number_input("维保外包 (AED/年)", 30000)
+            inputs['base_rent'] = st.number_input("车位租金 (AED/年)", value=96000, step=5000, min_value=0, max_value=2000000)
+            inputs['base_it_saas'] = st.number_input("IT/SaaS (AED/年)", value=50000, step=1000, min_value=0, max_value=500000)
+            inputs['base_marketing'] = st.number_input("广告营销 (AED/年)", value=50000, step=1000, min_value=0, max_value=500000)
+            inputs['base_maintenance'] = st.number_input("维保外包 (AED/年)", value=30000, step=1000, min_value=0, max_value=500000)
 
         with st.expander("📉 **财务参数 (核心假设)**", expanded=True):
-            inputs['power_efficiency'] = st.number_input("⚡ 电能效率 (%)", 95.0, 0.5) / 100
-            inputs['inflation_rate'] = st.number_input("📈 OPEX 通胀率 (%)", 3.0, 0.5) / 100
+            # 对于百分比，也明确指定 min/max
+            inputs['power_efficiency'] = st.number_input("⚡ 电能效率 (%)", value=95.0, step=0.5, min_value=50.0, max_value=100.0) / 100
+            inputs['inflation_rate'] = st.number_input("📈 OPEX 通胀率 (%)", value=3.0, step=0.5, min_value=0.0, max_value=50.0) / 100
             st.divider()
             # --- 新增：动态电价参数 ---
-            inputs['price_sale_growth'] = st.number_input("💹 销售电价年增长率 (%)", value=0.0, step=0.5, help="每年销售电价的环比增长") / 100
-            inputs['price_cost_growth'] = st.number_input("💹 进货电价年增长率 (%)", value=0.0, step=0.5, help="每年进货成本的环比增长") / 100
+            inputs['price_sale_growth'] = st.number_input("💹 销售电价年增长率 (%)", value=0.0, step=0.5, min_value=-20.0, max_value=50.0, help="每年销售电价的环比增长") / 100
+            inputs['price_cost_growth'] = st.number_input("💹 进货电价年增长率 (%)", value=0.0, step=0.5, min_value=-20.0, max_value=50.0, help="每年进货成本的环比增长") / 100
             st.divider()
-            inputs['tax_rate'] = st.number_input("🏛️ 企业所得税率 (%)", 9.0, 1.0) / 100
+            inputs['tax_rate'] = st.number_input("🏛️ 企业所得税率 (%)", value=9.0, step=1.0, min_value=0.0, max_value=50.0) / 100
             inputs['tax_threshold'] = 375000
             # --- 新增：折旧参数 ---
-            inputs['depreciation_years'] = st.number_input("📅 综合资产折旧年限 (年)", value=8, step=1, min_value=1, help="用于计算CAPEX的直线折旧以抵扣税基")
+            inputs['depreciation_years'] = st.number_input("📅 综合资产折旧年限 (年)", value=8, step=1, min_value=1, max_value=30, help="用于计算CAPEX的直线折旧以抵扣税基")
         
         st.markdown("---")
         st.caption("Made for Dubai EV Project Theme")
@@ -344,16 +346,16 @@ def render_project_inputs_form(backend_inputs):
         c1, c2, c3 = st.columns(3)
         with c1:
             st.markdown("##### A. 设备数量")
-            inputs['qty_piles'] = st.number_input("拟投超充主机 (台)", value=2, step=1)
-            inputs['qty_trans'] = st.number_input("拟投变压器 (台)", value=1, step=1)
+            inputs['qty_piles'] = st.number_input("拟投超充主机 (台)", value=2, step=1, min_value=1, max_value=100)
+            inputs['qty_trans'] = st.number_input("拟投变压器 (台)", value=1, step=1, min_value=1, max_value=20)
         with c2:
             st.markdown("##### B. 资金与电价 (基准)")
-            inputs['interest_rate'] = st.number_input("资金成本费率 (%)", value=5.0) / 100
-            inputs['price_sale'] = st.number_input("销售电价 (AED/kWh)", value=1.20, help="Year 1 基准电价")
-            inputs['price_cost'] = st.number_input("进货电价 (AED/kWh)", value=0.44, help="Year 1 基准电价")
+            inputs['interest_rate'] = st.number_input("资金成本费率 (%)", value=5.0, step=0.5, min_value=0.0, max_value=30.0) / 100
+            inputs['price_sale'] = st.number_input("销售电价 (AED/kWh)", value=1.20, step=0.05, min_value=0.1, max_value=10.0, help="Year 1 基准电价")
+            inputs['price_cost'] = st.number_input("进货电价 (AED/kWh)", value=0.44, step=0.05, min_value=0.1, max_value=10.0, help="Year 1 基准电价")
         with c3:
             st.markdown("##### C. 周期设定")
-            inputs['years_duration'] = st.number_input("运营测算年限 (年)", value=10, min_value=3, max_value=20)
+            inputs['years_duration'] = st.number_input("运营测算年限 (年)", value=10, min_value=3, max_value=20, step=1)
         
         # 表单提交按钮
         submitted = st.form_submit_button("🔄 确认并运行测算 (Run Model)", type="primary", use_container_width=True)
@@ -481,8 +483,8 @@ def main():
 
     # 2. 渲染结构框架
     render_header()
-    # 获取侧边栏配置参数
-    backend_inputs = render_sidebar_content(10) # 初始默认10年，后续会由表单覆盖
+    # 获取侧边栏配置参数 (初始默认10年，后续会由表单覆盖)
+    backend_inputs = render_sidebar_content(10) 
 
     # 3. 主界面交互与计算流程
     # 渲染表单并获取输入和提交状态
