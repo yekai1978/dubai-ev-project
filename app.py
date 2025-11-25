@@ -10,7 +10,7 @@ import matplotlib.font_manager as fm
 # ==========================================
 PAGE_CONFIG = {
     "layout": "wide",
-    "page_title": "迪拜新能源超充投资模型 V10.4 Ultimate",
+    "page_title": "迪拜新能源超充投资模型 V10.4.1 Fixed",
     "page_icon": "🇦🇪",
     "initial_sidebar_state": "expanded"
 }
@@ -31,7 +31,7 @@ CSS_STYLES = """
     /* 头部横幅样式 */
     .main-header-container {
         background: linear-gradient(90deg, #0f2027 0%, #203a43 50%, #2c5364 100%);
-        padding: 2rem 1rem; /* 稍微减小高度 */
+        padding: 2rem 1rem;
         border-radius: 0 0 20px 20px;
         color: white; text-align: center;
         margin-top: -4rem; margin-bottom: 1rem;
@@ -54,7 +54,6 @@ CSS_STYLES = """
     [data-testid="stSidebar"] h2 { font-size: 1.2rem; color: #203a43; margin-top: 1rem;}
     
     /* --- 重点优化：侧边栏提交按钮 --- */
-    /* 让按钮在侧边栏底部更显眼 */
     [data-testid="stFormSubmitButton"] {
         margin-top: 1rem;
         padding-bottom: 1rem;
@@ -206,7 +205,7 @@ def render_header():
     st.markdown("""
         <div class="main-header-container">
             <div class="main-title">🇦🇪 迪拜新能源超充站 · 投资测算模型</div>
-            <div class="sub-title">V10.4 Ultimate | 侧边栏集成控制台 | 专业级UI体验</div>
+            <div class="sub-title">V10.4.1 Ultimate | 侧边栏集成控制台 | 专业级UI体验</div>
         </div>
     """, unsafe_allow_html=True)
 
@@ -233,59 +232,61 @@ def render_sidebar_and_get_inputs():
         with st.form("main_calculator_form"):
             st.subheader("1. 项目规模与周期 (Project Setup)")
             inputs = {}
+            # 【关键修复】全部使用关键字参数 value, min_value, max_value, step
             c1, c2 = st.columns(2)
-            inputs['qty_piles'] = c1.number_input("拟投主机(台)", 2, 1, 100)
-            inputs['qty_trans'] = c2.number_input("拟投变压器(台)", 1, 1, 20)
+            inputs['qty_piles'] = c1.number_input("拟投主机(台)", value=2, min_value=1, max_value=100, step=1)
+            inputs['qty_trans'] = c2.number_input("拟投变压器(台)", value=1, min_value=1, max_value=20, step=1)
             
             c3, c4 = st.columns(2)
-            inputs['interest_rate'] = c3.number_input("资金成本(%)", 5.0, 0.5, 0.0, 30.0) / 100
-            inputs['years_duration'] = c4.number_input("测算年限(年)", 10, 1, 5, 20)
+            inputs['interest_rate'] = c3.number_input("资金成本(%)", value=5.0, min_value=0.0, max_value=30.0, step=0.5) / 100
+            inputs['years_duration'] = c4.number_input("测算年限(年)", value=10, min_value=5, max_value=20, step=1)
             
             c5, c6 = st.columns(2)
-            inputs['price_sale'] = c5.number_input("销售电价(AED)", 1.20, 0.05, 0.1, 5.0)
-            inputs['price_cost'] = c6.number_input("进货电价(AED)", 0.44, 0.05, 0.1, 5.0)
+            inputs['price_sale'] = c5.number_input("销售电价(AED)", value=1.20, min_value=0.1, max_value=5.0, step=0.05)
+            inputs['price_cost'] = c6.number_input("进货电价(AED)", value=0.44, min_value=0.1, max_value=5.0, step=0.05)
 
             st.markdown("---")
             st.subheader("⚙️ 后台参数微调 (Backend Config)")
             
             with st.expander("🏗️ CAPEX 基建设备参数", expanded=False):
                 ec1, ec2 = st.columns(2)
-                inputs['pile_power_kw'] = ec1.number_input("主机功率(kW)", 480, 20, 0, 2000)
-                inputs['guns_per_pile'] = ec2.number_input("单机枪数(把)", 6, 1, 1, 30)
-                inputs['price_pile_unit'] = st.number_input("主机单价(AED)", 200000, 5000, 0)
+                inputs['pile_power_kw'] = ec1.number_input("主机功率(kW)", value=480, min_value=0, max_value=2000, step=20)
+                inputs['guns_per_pile'] = ec2.number_input("单机枪数(把)", value=6, min_value=1, max_value=30, step=1)
+                inputs['price_pile_unit'] = st.number_input("主机单价(AED)", value=200000, min_value=0, max_value=2000000, step=5000)
                 tc1, tc2 = st.columns(2)
                 trans_type = tc1.selectbox("变电站规格", ["1000 kVA", "1500 kVA"])
                 inputs['trans_val'] = 1000 if "1000" in trans_type else 1500
-                inputs['price_trans_unit'] = tc2.number_input("变电站单价", (200000 if inputs['trans_val']==1000 else 250000), 5000, 0)
-                inputs['cost_dewa_conn'] = st.number_input("DEWA接入费", 200000, 10000, 0)
-                inputs['cost_civil_work'] = st.number_input("土建施工费", 150000, 10000, 0)
-                inputs['cost_hv_cable'] = st.number_input("高压电缆", 20000, 1000, 0)
-                inputs['cost_lv_cable'] = st.number_input("低压电缆", 80000, 5000, 0)
-                inputs['cost_canopy'] = st.number_input("遮阳棚品牌", 80000, 5000, 0)
-                inputs['cost_design'] = st.number_input("设计顾问费", 40000, 5000, 0)
-                inputs['cost_weak_current_total'] = st.number_input("弱电系统总包", 70000, 5000, 0)
-                inputs['other_cost_1'] = st.number_input("前期开办费", 30000, 5000, 0)
-                inputs['other_cost_2'] = st.number_input("不可预见金", 20000, 5000, 0)
+                default_trans_price = (200000 if inputs['trans_val']==1000 else 250000)
+                inputs['price_trans_unit'] = tc2.number_input("变电站单价", value=default_trans_price, min_value=0, max_value=2000000, step=5000)
+                inputs['cost_dewa_conn'] = st.number_input("DEWA接入费", value=200000, min_value=0, max_value=2000000, step=10000)
+                inputs['cost_civil_work'] = st.number_input("土建施工费", value=150000, min_value=0, max_value=2000000, step=10000)
+                inputs['cost_hv_cable'] = st.number_input("高压电缆", value=20000, min_value=0, max_value=500000, step=1000)
+                inputs['cost_lv_cable'] = st.number_input("低压电缆", value=80000, min_value=0, max_value=500000, step=5000)
+                inputs['cost_canopy'] = st.number_input("遮阳棚品牌", value=80000, min_value=0, max_value=1000000, step=5000)
+                inputs['cost_design'] = st.number_input("设计顾问费", value=40000, min_value=0, max_value=500000, step=5000)
+                inputs['cost_weak_current_total'] = st.number_input("弱电系统总包", value=70000, min_value=0, max_value=500000, step=5000)
+                inputs['other_cost_1'] = st.number_input("前期开办费", value=30000, min_value=0, max_value=500000, step=5000)
+                inputs['other_cost_2'] = st.number_input("不可预见金", value=20000, min_value=0, max_value=500000, step=5000)
 
             with st.expander("🛠️ OPEX 固定运营参数", expanded=False):
-                inputs['base_rent'] = st.number_input("车位租金(AED/年)", 96000, 5000, 0)
-                inputs['base_it_saas'] = st.number_input("IT/SaaS(AED/年)", 50000, 1000, 0)
-                inputs['base_marketing'] = st.number_input("广告营销(AED/年)", 50000, 1000, 0)
-                inputs['base_maintenance'] = st.number_input("维保外包(AED/年)", 30000, 1000, 0)
+                inputs['base_rent'] = st.number_input("车位租金(AED/年)", value=96000, min_value=0, max_value=2000000, step=5000)
+                inputs['base_it_saas'] = st.number_input("IT/SaaS(AED/年)", value=50000, min_value=0, max_value=500000, step=1000)
+                inputs['base_marketing'] = st.number_input("广告营销(AED/年)", value=50000, min_value=0, max_value=500000, step=1000)
+                inputs['base_maintenance'] = st.number_input("维保外包(AED/年)", value=30000, min_value=0, max_value=500000, step=1000)
 
             with st.expander("📉 财务核心假设", expanded=True):
                 fc1, fc2 = st.columns(2)
-                inputs['power_efficiency'] = fc1.number_input("⚡ 电能效率(%)", 95.0, 0.5, 50.0, 100.0) / 100
-                inputs['inflation_rate'] = fc2.number_input("📈 通胀率(%)", 3.0, 0.5, 0.0, 50.0) / 100
+                inputs['power_efficiency'] = fc1.number_input("⚡ 电能效率(%)", value=95.0, min_value=50.0, max_value=100.0, step=0.5) / 100
+                inputs['inflation_rate'] = fc2.number_input("📈 通胀率(%)", value=3.0, min_value=0.0, max_value=50.0, step=0.5) / 100
                 pc1, pc2 = st.columns(2)
-                inputs['price_sale_growth'] = pc1.number_input("💹 销售涨幅(%)", 0.0, 0.5, -10.0, 20.0) / 100
-                inputs['price_cost_growth'] = pc2.number_input("💹 成本涨幅(%)", 0.0, 0.5, -10.0, 20.0) / 100
+                inputs['price_sale_growth'] = pc1.number_input("💹 销售涨幅(%)", value=0.0, min_value=-10.0, max_value=20.0, step=0.5) / 100
+                inputs['price_cost_growth'] = pc2.number_input("💹 成本涨幅(%)", value=0.0, min_value=-10.0, max_value=20.0, step=0.5) / 100
                 tc1, tc2 = st.columns(2)
-                inputs['tax_rate'] = tc1.number_input("🏛️ 税率(%)", 9.0, 1.0, 0.0, 50.0) / 100
-                inputs['tax_threshold'] = tc2.number_input("免税额度", 375000, 10000, 0)
+                inputs['tax_rate'] = tc1.number_input("🏛️ 税率(%)", value=9.0, min_value=0.0, max_value=50.0, step=1.0) / 100
+                inputs['tax_threshold'] = tc2.number_input("免税额度", value=375000, min_value=0, max_value=5000000, step=10000)
                 dc1, dc2 = st.columns(2)
-                inputs['dep_years_charger'] = dc1.number_input("🔋 设备折旧(年)", 5, 1, 2, 15)
-                inputs['dep_years_infra'] = dc2.number_input("🏗️ 基建折旧(年)", 15, 1, 5, 40)
+                inputs['dep_years_charger'] = dc1.number_input("🔋 设备折旧(年)", value=5, min_value=2, max_value=15, step=1)
+                inputs['dep_years_infra'] = dc2.number_input("🏗️ 基建折旧(年)", value=15, min_value=5, max_value=40, step=1)
 
             st.write("") # Spacer
             # --- 重点优化：简化的提交按钮，位于侧边栏最底部 ---
@@ -377,13 +378,13 @@ def render_download_section(df_res, edited_df, font_prop):
         with c1:
             st.caption("导出结果")
             csv_report = df_res.to_csv(index=False).encode('utf-8-sig')
-            st.download_button("📄 下载财务报告 (.csv)", csv_report, 'dubai_financial_report_v10.4.csv', 'text/csv', use_container_width=True)
+            st.download_button("📄 下载财务报告 (.csv)", csv_report, 'dubai_financial_report_v10.4.1.csv', 'text/csv', use_container_width=True)
             png_buffer = dataframe_to_png(df_res, font_prop)
-            st.download_button("🖼️ 下载表格图片 (.png)", png_buffer, 'dubai_financial_report_v10.4.png', 'image/png', use_container_width=True)
+            st.download_button("🖼️ 下载表格图片 (.png)", png_buffer, 'dubai_financial_report_v10.4.1.png', 'image/png', use_container_width=True)
         with c2:
             st.caption("保存配置")
             csv_config = edited_df[["单枪日均充电量 (kWh)", "运营人数 (人)", "人均年薪 (AED)"]].to_csv(index=False).encode('utf-8-sig')
-            st.download_button("💾 保存当前运营配置 (.csv)", csv_config, 'operation_config_v10.4.csv', 'text/csv', use_container_width=True)
+            st.download_button("💾 保存当前运营配置 (.csv)", csv_config, 'operation_config_v10.4.1.csv', 'text/csv', use_container_width=True)
 
 # ==========================================
 # 6. 主控制流 (Main Execution)
