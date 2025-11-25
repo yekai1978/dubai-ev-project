@@ -9,8 +9,8 @@ import matplotlib.font_manager as fm
 # 1. 配置与常量层
 # ==========================================
 PAGE_CONFIG = {
-    "layout": "wide", # 保持宽屏，但内容居中
-    "page_title": "迪拜新能源超充投资模型 V10.5 Ultimate",
+    "layout": "wide",
+    "page_title": "迪拜新能源超充投资模型 V10.7 Ultimate",
     "page_icon": "🇦🇪",
 }
 
@@ -24,12 +24,11 @@ DEFAULT_PARAMS = {
     "salary": [75000] * 10
 }
 
-# 自定义 CSS (适配单栏布局)
+# 自定义 CSS
 CSS_STYLES = """
     <style>
-    /* 头部横幅 - 更简洁 */
     .main-header-container {
-        background: linear-gradient(90deg, #1a2a6c, #b21f1f, #fdbb2d); /* 新的迪拜沙漠夕阳色调 */
+        background: linear-gradient(90deg, #1a2a6c, #b21f1f, #fdbb2d);
         padding: 2rem;
         border-radius: 15px;
         color: white; text-align: center;
@@ -38,31 +37,21 @@ CSS_STYLES = """
     }
     .main-title { font-size: 2.2rem; font-weight: 800; margin: 0; text-shadow: 1px 1px 2px rgba(0,0,0,0.3); }
     .sub-title { font-size: 1rem; opacity: 0.95; margin-top: 0.5rem; font-weight: 400; }
-
-    /* 指标卡片优化 */
     [data-testid="stMetric"] {
         background-color: #fff; border-radius: 10px; padding: 15px;
         border: 1px solid #eee; box-shadow: 0 2px 6px rgba(0,0,0,0.05);
     }
-    [data-testid="stMetricValue"] { font-size: 1.8rem !important; color: #1a2a6c !important; font-weight: 700 !important; }
-
-    /* 运行按钮样式 */
+    [data-testid="stMetricValue"] { font-size: 1.6rem !important; color: #1a2a6c !important; font-weight: 700 !important; }
     .stButton > button[type="primary"] {
-        width: 100%;
-        height: 3.5rem;
-        font-size: 1.2rem;
-        font-weight: bold;
-        background: linear-gradient(90deg, #1a2a6c, #b21f1f);
-        border: none;
-        box-shadow: 0 4px 10px rgba(0,0,0,0.2);
-        transition: all 0.3s ease;
+        width: 100%; height: 3.5rem; font-size: 1.2rem; font-weight: bold;
+        background: linear-gradient(90deg, #1a2a6c, #b21f1f); border: none;
+        box-shadow: 0 4px 10px rgba(0,0,0,0.2); transition: all 0.3s ease;
     }
-    .stButton > button[type="primary"]:hover {
-        transform: translateY(-2px);
-        box-shadow: 0 6px 15px rgba(0,0,0,0.3);
-    }
-
-    /* 移动端适配 */
+    .stButton > button[type="primary"]:hover { transform: translateY(-2px); box-shadow: 0 6px 15px rgba(0,0,0,0.3); }
+    
+    /* 优化 Checkbox 样式 */
+    [data-testid="stCheckbox"] label { font-weight: 600; color: #1a2a6c; }
+    
     @media (max-width: 640px) {
         .main-title { font-size: 1.6rem; }
         [data-testid="stNumberInput"] input { width: 100%; }
@@ -120,14 +109,26 @@ def dataframe_to_png(df, font_prop):
 # 4. 核心逻辑层 (计算)
 # ==========================================
 def calculate_capex_details(inputs):
+    """将 CAPEX 按照折旧类别进行分组计算"""
+    # 1. 充电设备类
     capex_charger = (inputs['price_pile_unit'] * inputs['qty_piles'])
-    capex_trans = (inputs['price_trans_unit'] * inputs['qty_trans'])
-    capex_power_infra = inputs['cost_dewa_conn'] + inputs['cost_hv_cable'] + inputs['cost_lv_cable']
-    capex_civil = inputs['cost_civil_work'] + inputs['cost_canopy'] + inputs['cost_design']
-    capex_others = inputs['cost_weak_current_total'] + inputs['other_cost_1'] + inputs['other_cost_2']
-    capex_infra_total = capex_trans + capex_power_infra + capex_civil + capex_others
-    total_capex = capex_charger + capex_infra_total
-    return {"total_capex": total_capex, "capex_charger": capex_charger, "capex_infra": capex_infra_total}
+    # 2. 变压器及接入类
+    capex_trans_group = (inputs['price_trans_unit'] * inputs['qty_trans']) + inputs['cost_dewa_conn']
+    # 3. 线缆类
+    capex_cable_group = inputs['cost_hv_cable'] + inputs['cost_lv_cable']
+    # 4. 土建及其他类
+    capex_civil_other = inputs['cost_civil_work'] + inputs['cost_canopy'] + inputs['cost_design'] + \
+                        inputs['cost_weak_current_total'] + inputs['other_cost_1'] + inputs['other_cost_2']
+    
+    total_capex = capex_charger + capex_trans_group + capex_cable_group + capex_civil_other
+    
+    return {
+        "total_capex": total_capex,
+        "capex_charger": capex_charger,
+        "capex_trans_group": capex_trans_group,
+        "capex_cable_group": capex_cable_group,
+        "capex_civil_other": capex_civil_other
+    }
 
 def calculate_financial_model(edited_df, capex_data, inputs):
     results = []
@@ -136,8 +137,25 @@ def calculate_financial_model(edited_df, capex_data, inputs):
     cumulative_cash = -total_capex
     payback_year = None
     total_guns = inputs['qty_piles'] * inputs['guns_per_pile']
-    dep_charger_annual = capex_data["capex_charger"] / inputs['dep_years_charger'] if inputs['dep_years_charger'] > 0 else 0
-    dep_infra_annual = capex_data["capex_infra"] / inputs['dep_years_infra'] if inputs['dep_years_infra'] > 0 else 0
+
+    # --- V10.7 核心升级：计算分类年折旧额 (加入是否启用判断) ---
+    # 如果未启用折旧，或年限设置不合理，则该项年折旧额为 0
+    dep_charger_annual = 0
+    if inputs.get('enable_dep_charger', True) and inputs['dep_years_charger'] > 0:
+        dep_charger_annual = capex_data["capex_charger"] / inputs['dep_years_charger']
+
+    dep_trans_annual = 0
+    if inputs.get('enable_dep_trans', True) and inputs['dep_years_trans'] > 0:
+        dep_trans_annual = capex_data["capex_trans_group"] / inputs['dep_years_trans']
+
+    dep_cable_annual = 0
+    if inputs.get('enable_dep_cable', True) and inputs['dep_years_cable'] > 0:
+        dep_cable_annual = capex_data["capex_cable_group"] / inputs['dep_years_cable']
+
+    dep_civil_annual = 0
+    if inputs.get('enable_dep_civil', True) and inputs['dep_years_civil'] > 0:
+        dep_civil_annual = capex_data["capex_civil_other"] / inputs['dep_years_civil']
+    # ------------------------------------------------------
 
     for index, row in edited_df.iterrows():
         year_idx = index; year_num = year_idx + 1
@@ -157,9 +175,14 @@ def calculate_financial_model(edited_df, capex_data, inputs):
         total_opex = cost_power + current_labor + current_fixed
         
         ebitda = revenue - total_opex
-        current_dep_charger = dep_charger_annual if year_num <= inputs['dep_years_charger'] else 0
-        current_dep_infra = dep_infra_annual if year_num <= inputs['dep_years_infra'] else 0
-        current_total_depreciation = current_dep_charger + current_dep_infra
+        
+        # 计算当年总折旧额（判断各项是否在折旧期内，且已启用）
+        current_dep_charger = dep_charger_annual if (inputs.get('enable_dep_charger', True) and year_num <= inputs['dep_years_charger']) else 0
+        current_dep_trans = dep_trans_annual if (inputs.get('enable_dep_trans', True) and year_num <= inputs['dep_years_trans']) else 0
+        current_dep_cable = dep_cable_annual if (inputs.get('enable_dep_cable', True) and year_num <= inputs['dep_years_cable']) else 0
+        current_dep_civil = dep_civil_annual if (inputs.get('enable_dep_civil', True) and year_num <= inputs['dep_years_civil']) else 0
+        current_total_depreciation = current_dep_charger + current_dep_trans + current_dep_cable + current_dep_civil
+
         ebit = ebitda - current_total_depreciation
         cost_finance = total_capex * inputs['interest_rate']
         ebt = ebit - cost_finance
@@ -177,19 +200,18 @@ def calculate_financial_model(edited_df, capex_data, inputs):
     return pd.DataFrame(results), payback_year
 
 # ==========================================
-# 5. 界面渲染层 (UI Rendering) - 从上到下流程
+# 5. 界面渲染层 (UI Rendering)
 # ==========================================
 def render_header():
     st.markdown(CSS_STYLES, unsafe_allow_html=True)
     st.markdown("""
         <div class="main-header-container">
             <div class="main-title">🇦🇪 迪拜新能源超充站 · 投资测算模型</div>
-            <div class="sub-title">V10.5 Ultimate | 极简流线版 | 动态电价 | 精细化折旧</div>
+            <div class="sub-title">V10.7 Ultimate | 极简流线版 | 灵活折旧策略</div>
         </div>
     """, unsafe_allow_html=True)
 
 def render_config_import():
-    """配置导入区"""
     with st.expander("📂 **导入历史配置 (Optional)**", expanded=False):
         uploaded_config = st.file_uploader("上传CSV文件恢复表格设置", type=["csv"])
         if uploaded_config is not None:
@@ -203,7 +225,6 @@ def render_config_import():
             except Exception as e: st.error(f"读取失败：{e}")
 
 def render_base_params_section():
-    """第一部分：基础参数设置 (默认折叠)"""
     st.header("1. 基础参数设置 (Base Parameters)")
     with st.expander("⚙️ **点击展开/收起基准配置 (Advanced Config)**", expanded=False):
         st.caption("包含供应链单价、运营基准费用及核心财务假设。")
@@ -222,12 +243,12 @@ def render_base_params_section():
             inputs['cost_dewa_conn'] = st.number_input("DEWA接入费", value=200000, step=10000)
             inputs['cost_civil_work'] = st.number_input("土建施工费", value=150000, step=10000)
             inputs['cost_weak_current_total'] = st.number_input("弱电/杂项/开办费总计", value=120000, step=10000)
-            inputs['cost_hv_cable'] = 20000; inputs['cost_lv_cable'] = 80000; inputs['cost_canopy'] = 80000; inputs['cost_design'] = 40000; inputs['other_cost_1'] = 0; inputs['other_cost_2'] = 0 # 简化显示
+            inputs['cost_hv_cable'] = 20000; inputs['cost_lv_cable'] = 80000; inputs['cost_canopy'] = 80000; inputs['cost_design'] = 40000; inputs['other_cost_1'] = 0; inputs['other_cost_2'] = 0
 
         with t2:
             inputs['base_rent'] = st.number_input("车位租金(AED/年)", value=96000, step=5000)
             inputs['base_it_saas'] = st.number_input("IT/SaaS/营销/维保总计(AED/年)", value=130000, step=5000)
-            inputs['base_marketing'] = 0; inputs['base_maintenance'] = 0 # 简化显示
+            inputs['base_marketing'] = 0; inputs['base_maintenance'] = 0
 
         with t3:
             f1, f2 = st.columns(2)
@@ -239,13 +260,45 @@ def render_base_params_section():
             tx1, tx2 = st.columns(2)
             inputs['tax_rate'] = tx1.number_input("🏛️ 税率(%)", value=9.0, step=1.0) / 100
             inputs['tax_threshold'] = tx2.number_input("免税额度", value=375000, step=10000)
-            dp1, dp2 = st.columns(2)
-            inputs['dep_years_charger'] = dp1.number_input("🔋 设备折旧(年)", value=5, step=1)
-            inputs['dep_years_infra'] = dp2.number_input("🏗️ 基建折旧(年)", value=15, step=1)
+            
+            st.markdown("---")
+            st.markdown("##### 折旧策略设定 (Depreciation Strategy)")
+            st.caption("勾选“启用”后，对应的资产将按设定年限计提折旧以抵扣税基；否则不计折旧。")
+            
+            # --- V10.7 核心升级：可选可填的折旧设置 ---
+            dp1, dp2, dp3, dp4 = st.columns(4)
+            with dp1:
+                st.markdown("**🔋 充电设备**")
+                inputs['enable_dep_charger'] = st.checkbox("启用折旧", value=True, key="cb_c")
+                if inputs['enable_dep_charger']:
+                     inputs['dep_years_charger'] = st.number_input("年限(年)", value=5, min_value=1, step=1, key="ni_c")
+                else: inputs['dep_years_charger'] = 1 # Dummy value
+            
+            with dp2:
+                st.markdown("**🏗️ 变压器及接入**")
+                inputs['enable_dep_trans'] = st.checkbox("启用折旧", value=True, key="cb_t")
+                if inputs['enable_dep_trans']:
+                    inputs['dep_years_trans'] = st.number_input("年限(年)", value=15, min_value=1, step=1, key="ni_t")
+                else: inputs['dep_years_trans'] = 1
+
+            with dp3:
+                st.markdown("**➰ 线缆工程**")
+                inputs['enable_dep_cable'] = st.checkbox("启用折旧", value=True, key="cb_ca")
+                if inputs['enable_dep_cable']:
+                    inputs['dep_years_cable'] = st.number_input("年限(年)", value=20, min_value=1, step=1, key="ni_ca")
+                else: inputs['dep_years_cable'] = 1
+            
+            with dp4:
+                st.markdown("**🧱 土建及其他**")
+                inputs['enable_dep_civil'] = st.checkbox("启用折旧", value=True, key="cb_ci")
+                if inputs['enable_dep_civil']:
+                    inputs['dep_years_civil'] = st.number_input("年限(年)", value=20, min_value=1, step=1, key="ni_ci")
+                else: inputs['dep_years_civil'] = 1
+            # ---------------------------------------
+
     return inputs
 
 def render_project_scale_section(inputs):
-    """第二部分：项目规模与周期 (核心输入)"""
     st.header("2. 项目规模与周期 (Project Scale)")
     with st.container(border=True):
         c1, c2, c3 = st.columns(3)
@@ -260,30 +313,28 @@ def render_project_scale_section(inputs):
             inputs['price_cost'] = st.number_input("进货电价 (AED/kWh)", value=0.44, step=0.05)
         with c3:
             st.markdown("##### C. 周期设定")
-            # 关键：此输入改变会立即触发整个页面刷新，更新下方的表格
             inputs['years_duration'] = st.number_input("运营测算年限 (年)", value=10, min_value=3, max_value=20, step=1)
 
-    # 实时容量校验
     total_power = inputs['qty_piles'] * inputs['pile_power_kw']
     total_trans = inputs['qty_trans'] * inputs['trans_val']
     if total_power > total_trans: st.warning(f"⚠️ 容量提示: 总功率 {total_power}kW > 变压器 {total_trans}kVA")
     else: st.success(f"✅ 配置确认: {inputs['qty_piles']*inputs['guns_per_pile']}枪 | 总功率 {total_power}kW | 变压器 {total_trans}kVA")
-    
     return inputs
 
 def render_capex_preview(inputs):
-    """插入部分：CAPEX 即时预览"""
     capex_data = calculate_capex_details(inputs)
     with st.container(border=True):
         st.markdown(f"**💰 Year 0 初始投资预览：{capex_data['total_capex']:,.0f} AED**")
-        # st.caption(f"设备类: {capex_data['capex_charger']:,.0f} | 基建类: {capex_data['capex_infra']:,.0f}")
+        c1, c2, c3, c4 = st.columns(4)
+        c1.metric("🔋 充电设备", f"{capex_data['capex_charger']:,.0f}")
+        c2.metric("🏗️ 变压器及接入", f"{capex_data['capex_trans_group']:,.0f}")
+        c3.metric("➰ 线缆工程", f"{capex_data['capex_cable_group']:,.0f}")
+        c4.metric("🧱 土建及其他", f"{capex_data['capex_civil_other']:,.0f}")
     return capex_data
 
 def render_dynamic_table_section(years_duration):
-    """第三部分：年度运营推演表格"""
     st.header("3. 年度运营推演 (Annual Operations)")
     st.caption("请在下方表格中直接修改每年的关键运营假设。")
-
     df_input = None
     if st.session_state.get('df_config_cache') is not None:
         df_uploaded = st.session_state['df_config_cache']
@@ -305,7 +356,7 @@ def render_dynamic_table_section(years_duration):
         df_input,
         column_config={
             "年份": st.column_config.TextColumn(disabled=True, width="small"),
-            "单枪日均充电量 (kWh)": st.column_config.NumberColumn(label="✏️ 日均充电量 (kWh)", min_value=0, max_value=2000, step=10, required=True, format="%d"),
+            "单枪日均充电量 (kWh)": st.column_config.NumberColumn(label="✏️ 日均充电量 (kWh)", min_value=0, max_value=2500, step=10, required=True, format="%d"),
             "运营人数 (人)": st.column_config.NumberColumn(label="✏️ 运营人数 (人)", min_value=0, step=1, format="%d"),
             "人均年薪 (AED)": st.column_config.NumberColumn(label="✏️ 人均年薪 (AED)", format="%d")
         },
@@ -314,20 +365,15 @@ def render_dynamic_table_section(years_duration):
     return edited_df
 
 def render_run_button():
-    """渲染运行按钮"""
     st.divider()
-    # 这是一个独立的按钮，点击会触发页面刷新，并设置 session state
     run_pressed = st.button("🚀 开始测算 (Run Analysis)", type="primary", use_container_width=True)
     return run_pressed
 
 def render_results_section(df_res, total_capex, payback_year, edited_df, font_prop):
-    """渲染结果与下载区"""
     st.divider()
     st.header("📊 测算结果报告 (Results Report)")
-    
     total_net_profit = df_res["净利润"].sum()
     total_fcf_ops = df_res["净利润"].sum() + df_res["折旧(抵税)"].sum() 
-    
     c1, c2, c3, c4 = st.columns(4)
     c1.metric("💰 初始总投资 (CAPEX)", f"{total_capex:,.0f}")
     c2.metric("💸 运营期总净利", f"{total_net_profit:,.0f}")
@@ -346,35 +392,30 @@ def render_results_section(df_res, total_capex, payback_year, edited_df, font_pr
         c1, c2 = st.columns(2)
         with c1:
             csv_report = df_res.to_csv(index=False).encode('utf-8-sig')
-            st.download_button("📄 下载财务报告 (.csv)", csv_report, 'financial_report_v10.5.csv', 'text/csv', use_container_width=True)
+            st.download_button("📄 下载财务报告 (.csv)", csv_report, 'financial_report_v10.7.csv', 'text/csv', use_container_width=True)
             png_buffer = dataframe_to_png(df_res, font_prop)
-            st.download_button("🖼️ 下载表格图片 (.png)", png_buffer, 'financial_report_v10.5.png', 'image/png', use_container_width=True)
+            st.download_button("🖼️ 下载表格图片 (.png)", png_buffer, 'financial_report_v10.7.png', 'image/png', use_container_width=True)
         with c2:
             csv_config = edited_df[["单枪日均充电量 (kWh)", "运营人数 (人)", "人均年薪 (AED)"]].to_csv(index=False).encode('utf-8-sig')
-            st.download_button("💾 保存当前配置 (.csv)", csv_config, 'operation_config_v10.5.csv', 'text/csv', use_container_width=True)
+            st.download_button("💾 保存当前配置 (.csv)", csv_config, 'operation_config_v10.7.csv', 'text/csv', use_container_width=True)
 
 # ==========================================
-# 6. 主控制流 (线性执行)
+# 6. 主控制流
 # ==========================================
 def main():
     st.set_page_config(**PAGE_CONFIG)
     zh_font = load_custom_font()
     check_password()
     render_header()
-
-    # --- 从上到下的线性流程 ---
-    render_config_import() # 0. 导入
-    inputs = render_base_params_section() # 1. 基础参数
-    inputs = render_project_scale_section(inputs) # 2. 项目规模 (更新inputs)
-    capex_data = render_capex_preview(inputs) # 插入: CAPEX预览
-    edited_df = render_dynamic_table_section(inputs['years_duration']) # 3. 年度推演
+    render_config_import()
+    inputs = render_base_params_section()
+    inputs = render_project_scale_section(inputs)
+    capex_data = render_capex_preview(inputs)
+    edited_df = render_dynamic_table_section(inputs['years_duration'])
     
-    # 运行按钮与状态管理
     if 'run_analysis' not in st.session_state: st.session_state['run_analysis'] = False
-    if render_run_button(): # 如果按钮被点击
-        st.session_state['run_analysis'] = True # 设置状态为真
+    if render_run_button(): st.session_state['run_analysis'] = True
 
-    # 根据状态显示结果
     if st.session_state['run_analysis']:
         with st.spinner("正在进行复杂财务测算..."):
             df_res, payback_year = calculate_financial_model(edited_df, capex_data, inputs)
