@@ -1,19 +1,22 @@
 import streamlit as st
 import pandas as pd
 import io
+import os
 import matplotlib.pyplot as plt
+import matplotlib.font_manager as fm
 
 # ==========================================
 # 1. 配置与常量层 (Configuration & Constants)
 # ==========================================
 PAGE_CONFIG = {
     "layout": "wide",
-    "page_title": "迪拜新能源超充投资模型 V9.5 Pro",
+    "page_title": "迪拜新能源超充投资模型 V9.6 Pro",
     "page_icon": "🇦🇪",
     "initial_sidebar_state": "collapsed"
 }
 
 ADMIN_PASSWORD = "DbeVc"
+FONT_FILENAME = 'NotoSansSC-Regular.ttf' # 确保此文件名与你实际放入的文件名一致
 
 # 默认年度推演参数
 DEFAULT_PARAMS = {
@@ -30,11 +33,8 @@ CSS_STYLES = """
         background: linear-gradient(90deg, #1e3c72 0%, #2a5298 100%);
         padding: 2rem 1rem;
         border-radius: 0 0 15px 15px;
-        color: white;
-        text-align: center;
-        margin-top: -4rem;
-        margin-bottom: 2rem;
-        box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+        color: white; text-align: center;
+        margin-top: -4rem; margin-bottom: 2rem; box-shadow: 0 4px 6px rgba(0,0,0,0.1);
     }
     .main-title { font-size: 2.2rem; font-weight: 800; margin: 0; text-shadow: 1px 1px 2px rgba(0,0,0,0.2); }
     .sub-title { font-size: 1rem; opacity: 0.9; margin-top: 0.5rem; font-weight: 300; }
@@ -42,8 +42,7 @@ CSS_STYLES = """
     /* 指标卡片优化 */
     [data-testid="stMetric"] {
         background-color: #f8f9fa; border-radius: 10px; padding: 15px;
-        border: 1px solid #e9ecef; box-shadow: 0 2px 4px rgba(0,0,0,0.05);
-        transition: transform 0.2s;
+        border: 1px solid #e9ecef; box-shadow: 0 2px 4px rgba(0,0,0,0.05); transition: transform 0.2s;
     }
     [data-testid="stMetric"]:hover { transform: translateY(-2px); box-shadow: 0 4px 8px rgba(0,0,0,0.1); }
     [data-testid="stMetricValue"] { font-size: 1.8rem !important; color: #0056b3 !important; font-weight: 700 !important; }
@@ -57,37 +56,23 @@ CSS_STYLES = """
 """
 
 # ==========================================
-# 2. 工具函数层 (Utility Functions)
+# 2. 资源加载与安全层 (Resources & Security)
 # ==========================================
-def dataframe_to_png(df):
-    """将 DataFrame 渲染为 PNG 图像的 BytesIO 对象"""
-    df_display = df.copy()
-    # 千分位格式化
-    for col in df_display.columns:
-        if pd.api.types.is_numeric_dtype(df_display[col]) and col != "年份":
-             df_display[col] = df_display[col].apply(lambda x: f"{x:,.0f}")
-
-    fig, ax = plt.subplots(figsize=(12, len(df)*0.6 + 1))
-    ax.axis('tight')
-    ax.axis('off')
-    table = ax.table(cellText=df_display.values, colLabels=df_display.columns, loc='center', cellLoc='center')
-    table.auto_set_font_size(False)
-    table.set_fontsize(10)
-    table.scale(1.2, 1.5)
-
-    for (i, j), cell in table.get_celld().items():
-        if i == 0:
-            cell.set_text_props(weight='bold', color='white')
-            cell.set_facecolor('#2a5298')
-            cell.set_edgecolor('white')
-        else:
-            cell.set_edgecolor('#e9ecef')
-
-    buf = io.BytesIO()
-    plt.savefig(buf, format='png', bbox_inches='tight', dpi=300, transparent=True)
-    buf.seek(0)
-    plt.close(fig)
-    return buf
+@st.cache_resource
+def load_custom_font():
+    """加载自定义中文字体，使用缓存避免重复加载"""
+    # 获取当前脚本所在目录的绝对路径，确保在云端也能找到文件
+    current_dir = os.path.dirname(os.path.abspath(__file__))
+    font_path = os.path.join(current_dir, FONT_FILENAME)
+    
+    if os.path.exists(font_path):
+        # 加载找到的字体文件
+        return fm.FontProperties(fname=font_path)
+    else:
+        # 如果找不到字体文件（比如忘记上传），打印警告并回退到默认字体
+        # 这样至少保证程序不会崩溃，虽然中文会乱码
+        print(f"Warning: Font file '{FONT_FILENAME}' not found. Chinese characters may not render correctly in images.")
+        return fm.FontProperties(family='sans-serif')
 
 def check_password():
     """安全验证门禁"""
@@ -113,7 +98,50 @@ def check_password():
     st.stop()
 
 # ==========================================
-# 3. 核心逻辑层 (Core Logic) - 纯计算
+# 3. 工具函数层 (Utility Functions)
+# ==========================================
+def dataframe_to_png(df, font_prop):
+    """将 DataFrame 渲染为 PNG 图像的 BytesIO 对象，应用自定义字体"""
+    df_display = df.copy()
+    # 千分位格式化
+    for col in df_display.columns:
+        if pd.api.types.is_numeric_dtype(df_display[col]) and col != "年份":
+             df_display[col] = df_display[col].apply(lambda x: f"{x:,.0f}")
+
+    fig, ax = plt.subplots(figsize=(12, len(df)*0.6 + 1))
+    ax.axis('tight')
+    ax.axis('off')
+    
+    # 绘制表格
+    table = ax.table(cellText=df_display.values, colLabels=df_display.columns, loc='center', cellLoc='center')
+    
+    # 【关键】应用中文字体到所有单元格
+    for key, cell in table.get_celld().items():
+        cell.set_text_props(fontproperties=font_prop)
+
+    # 美化样式
+    table.auto_set_font_size(False)
+    table.set_fontsize(10)
+    table.scale(1.2, 1.5)
+
+    # 设置表头样式
+    for (i, j), cell in table.get_celld().items():
+        if i == 0:
+            cell.set_facecolor('#2a5298')
+            cell.set_edgecolor('white')
+            # 表头字体颜色需单独设置
+            cell.get_text().set_color('white') 
+        else:
+            cell.set_edgecolor('#e9ecef')
+
+    buf = io.BytesIO()
+    plt.savefig(buf, format='png', bbox_inches='tight', dpi=300, transparent=True)
+    buf.seek(0)
+    plt.close(fig)
+    return buf
+
+# ==========================================
+# 4. 核心逻辑层 (Core Logic) - 纯计算
 # ==========================================
 def calculate_capex(inputs):
     """计算各项 CAPEX 及总额"""
@@ -180,13 +208,13 @@ def calculate_financial_model(edited_df, total_capex, inputs):
     return pd.DataFrame(results), payback_year
 
 # ==========================================
-# 4. 界面渲染层 (UI Rendering) - 纯展示
+# 5. 界面渲染层 (UI Rendering) - 纯展示
 # ==========================================
 def render_header():
     st.markdown(CSS_STYLES, unsafe_allow_html=True)
     st.markdown("""
         <div class="main-header-container">
-            <div class="main-title">🇦🇪 迪拜新能源超充站 · 投资测算模型 (V9.5 Pro)</div>
+            <div class="main-title">🇦🇪 迪拜新能源超充站 · 投资测算模型 (V9.6 Pro)</div>
             <div class="sub-title">Financial Model & ROI Analysis | 专业版 UI | 模块化重构</div>
         </div>
     """, unsafe_allow_html=True)
@@ -300,7 +328,6 @@ def render_dynamic_table(years_duration):
     st.header("2. 年度运营推演核心表 (Dynamic Table)")
     st.markdown("✍️ **请直接编辑下表**修改每年的“单枪日充电量”和“人力配置”。")
     
-    # 数据准备逻辑
     df_input = None
     if st.session_state.get('df_config_cache') is not None:
         df_uploaded = st.session_state['df_config_cache']
@@ -324,7 +351,6 @@ def render_dynamic_table(years_duration):
     df_input["年份"] = [f"Y{i+1}" for i in range(years_duration)]
     df_input = df_input[["年份", "单枪日均充电量 (kWh)", "运营人数 (人)", "人均年薪 (AED)"]]
 
-    # 渲染可编辑表格
     edited_df = st.data_editor(
         df_input,
         column_config={
@@ -341,7 +367,6 @@ def render_dynamic_table(years_duration):
 def render_financial_report(df_res, total_capex, payback_year, years_duration):
     st.header("📊 财务评估结果 (Financial Report)")
     
-    # 核心指标卡片
     m1, m2 = st.columns(2)
     m1.metric("💰 初始总投资 (CAPEX)", f"{total_capex:,.0f} AED", help="建设期总投入")
     m2.metric("💸 运营期总净利 (税后)", f"{df_res['税后净利'].sum():,.0f} AED", help="测算期内累计净利润")
@@ -353,14 +378,13 @@ def render_financial_report(df_res, total_capex, payback_year, years_duration):
         m4.metric("⏱️ 动态回本期 (Payback)", "未回本", delta="周期外", delta_color="inverse")
     st.write("")
 
-    # 图表与表格 Tab
     tab_chart, tab_table = st.tabs(["📈 累计现金流曲线 (J-Curve)", "📄 详细现金流表 (Cash Flow)"])
     with tab_chart:
         st.area_chart(df_res.set_index("年份")["累计现金流"], color="#2a5298", use_container_width=True)
     with tab_table:
         st.dataframe(df_res.style.format("{:,.0f}", subset=["营收", "成本", "税前净利", "税金", "税后净利", "自由现金流", "累计现金流", "资金成本"]), use_container_width=True)
 
-def render_download_section(df_res, edited_df):
+def render_download_section(df_res, edited_df, font_prop):
     st.divider()
     with st.container(border=True):
         st.write("📥 **数据存取中心 (Data Center)**")
@@ -368,38 +392,42 @@ def render_download_section(df_res, edited_df):
         with c1:
             csv_report = df_res.to_csv(index=False).encode('utf-8-sig')
             st.download_button("📄 下载财务评估报告 (.csv)", csv_report, 'dubai_financial_report_v9.csv', 'text/csv', use_container_width=True)
-            png_buffer = dataframe_to_png(df_res)
-            st.download_button("🖼️ 下载表格图片 (.png)", png_buffer, 'dubai_financial_report_v9.png', 'image/png', use_container_width=True)
+            
+            # 调用工具函数生成图片，并传入字体属性对象
+            png_buffer = dataframe_to_png(df_res, font_prop)
+            st.download_button("🖼️ 下载表格图片 (.png)", png_buffer, 'dubai_financial_report_v9.png', 'image/png', use_container_width=True, help="生成精美的表格图片，已解决中文乱码问题")
+            
         with c2:
             csv_config = edited_df[["单枪日均充电量 (kWh)", "运营人数 (人)", "人均年薪 (AED)"]].to_csv(index=False).encode('utf-8-sig')
             st.download_button("💾 保存当前运营配置 (.csv)", csv_config, 'operation_config_v9.csv', 'text/csv', use_container_width=True)
 
 # ==========================================
-# 5. 主控制流 (Main Execution)
+# 6. 主控制流 (Main Execution)
 # ==========================================
 def main():
+    # 1. 初始化设置与资源加载
     st.set_page_config(**PAGE_CONFIG)
+    zh_font = load_custom_font() # 加载中文字体
     check_password() # 安全门禁
 
-    render_header() # 渲染头部
+    # 2. 渲染界面头部
+    render_header() 
 
-    # 1. 获取所有输入参数
+    # 3. 渲染输入区域并获取所有参数
     backend_inputs = render_backend_config()
     all_inputs = render_project_inputs(backend_inputs)
-    
-    render_config_loader(all_inputs['years_duration']) # 渲染配置加载器
+    render_config_loader(all_inputs['years_duration'])
 
-    # 2. 执行计算
+    # 4. 执行核心计算
     total_capex = calculate_capex(all_inputs)
     st.info(f"💰 **Year 0 (建设期) 总投入预估：{total_capex:,.0f} AED** (含全套设备、基建、弱电及杂项)")
     
-    # 3. 获取动态输入并执行核心模型计算
     edited_df = render_dynamic_table(all_inputs['years_duration'])
     df_res, payback_year = calculate_financial_model(edited_df, total_capex, all_inputs)
 
-    # 4. 渲染结果与下载区
+    # 5. 渲染结果与下载区 (将字体对象传递给下载区渲染函数)
     render_financial_report(df_res, total_capex, payback_year, all_inputs['years_duration'])
-    render_download_section(df_res, edited_df)
+    render_download_section(df_res, edited_df, zh_font)
 
 if __name__ == "__main__":
     main()
