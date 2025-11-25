@@ -6,88 +6,72 @@ import matplotlib.pyplot as plt
 import matplotlib.font_manager as fm
 
 # ==========================================
-# 1. 配置与常量层 (Configuration & Constants)
+# 1. 配置与常量层
 # ==========================================
 PAGE_CONFIG = {
-    "layout": "wide",
-    "page_title": "迪拜新能源超充投资模型 V10.4.1 Fixed",
+    "layout": "wide", # 保持宽屏，但内容居中
+    "page_title": "迪拜新能源超充投资模型 V10.5 Ultimate",
     "page_icon": "🇦🇪",
-    "initial_sidebar_state": "expanded"
 }
 
 ADMIN_PASSWORD = "DbeVc"
 FONT_FILENAME = 'NotoSansSC-Regular.ttf'
 
-# 默认年度推演参数 (爬坡模型)
+# 默认年度推演参数
 DEFAULT_PARAMS = {
     "daily_kwh": [50, 100, 150, 200, 250, 300, 350, 400, 450, 500],
     "staff": [2] * 10,
     "salary": [75000] * 10
 }
 
-# 自定义 CSS 样式 (适配侧边栏按钮)
+# 自定义 CSS (适配单栏布局)
 CSS_STYLES = """
     <style>
-    /* 头部横幅样式 */
+    /* 头部横幅 - 更简洁 */
     .main-header-container {
-        background: linear-gradient(90deg, #0f2027 0%, #203a43 50%, #2c5364 100%);
-        padding: 2rem 1rem;
-        border-radius: 0 0 20px 20px;
+        background: linear-gradient(90deg, #1a2a6c, #b21f1f, #fdbb2d); /* 新的迪拜沙漠夕阳色调 */
+        padding: 2rem;
+        border-radius: 15px;
         color: white; text-align: center;
-        margin-top: -4rem; margin-bottom: 1rem;
-        box-shadow: 0 8px 16px rgba(0,0,0,0.2);
+        margin-bottom: 2rem;
+        box-shadow: 0 4px 12px rgba(0,0,0,0.15);
     }
-    .main-title { font-size: 2.2rem; font-weight: 800; margin: 0; letter-spacing: 1px; text-shadow: 2px 2px 4px rgba(0,0,0,0.3); }
-    .sub-title { font-size: 1rem; opacity: 0.9; margin-top: 0.5rem; font-weight: 400; }
+    .main-title { font-size: 2.2rem; font-weight: 800; margin: 0; text-shadow: 1px 1px 2px rgba(0,0,0,0.3); }
+    .sub-title { font-size: 1rem; opacity: 0.95; margin-top: 0.5rem; font-weight: 400; }
 
     /* 指标卡片优化 */
     [data-testid="stMetric"] {
-        background-color: #ffffff; border-radius: 12px; padding: 20px;
-        border: 1px solid #e0e0e0; box-shadow: 0 4px 12px rgba(0,0,0,0.08); transition: all 0.3s ease;
+        background-color: #fff; border-radius: 10px; padding: 15px;
+        border: 1px solid #eee; box-shadow: 0 2px 6px rgba(0,0,0,0.05);
     }
-    [data-testid="stMetric"]:hover { transform: translateY(-4px); box-shadow: 0 8px 24px rgba(0,0,0,0.15); border-color: #2c5364; }
-    [data-testid="stMetricValue"] { font-size: 2rem !important; color: #2c5364 !important; font-weight: 800 !important; }
+    [data-testid="stMetricValue"] { font-size: 1.8rem !important; color: #1a2a6c !important; font-weight: 700 !important; }
 
-    /* 侧边栏样式 */
-    [data-testid="stSidebar"] { background-color: #f8f9fa; border-right: 1px solid #e9ecef; }
-    [data-testid="stSidebar"] h1 { font-size: 1.5rem; color: #2c5364; }
-    [data-testid="stSidebar"] h2 { font-size: 1.2rem; color: #203a43; margin-top: 1rem;}
-    
-    /* --- 重点优化：侧边栏提交按钮 --- */
-    [data-testid="stFormSubmitButton"] {
-        margin-top: 1rem;
-        padding-bottom: 1rem;
-    }
-    [data-testid="stFormSubmitButton"] > button {
+    /* 运行按钮样式 */
+    .stButton > button[type="primary"] {
         width: 100%;
-        border-radius: 8px;
-        height: 3rem;
-        font-size: 1.1rem;
-        font-weight: 700;
-        background: linear-gradient(90deg, #2c5364 0%, #203a43 100%);
+        height: 3.5rem;
+        font-size: 1.2rem;
+        font-weight: bold;
+        background: linear-gradient(90deg, #1a2a6c, #b21f1f);
         border: none;
-        box-shadow: 0 4px 10px rgba(44, 83, 100, 0.3);
-        transition: all 0.2s ease;
-        color: white !important;
+        box-shadow: 0 4px 10px rgba(0,0,0,0.2);
+        transition: all 0.3s ease;
     }
-    [data-testid="stFormSubmitButton"] > button:hover {
-        box-shadow: 0 6px 15px rgba(44, 83, 100, 0.5);
-        transform: translateY(-1px);
-        background: linear-gradient(90deg, #203a43 0%, #1e3c72 100%);
+    .stButton > button[type="primary"]:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 6px 15px rgba(0,0,0,0.3);
     }
-    [data-testid="stFormSubmitButton"] > button:active { transform: scale(0.99); }
-    /* --------------------------- */
 
     /* 移动端适配 */
     @media (max-width: 640px) {
-        .main-title { font-size: 1.8rem; }
+        .main-title { font-size: 1.6rem; }
         [data-testid="stNumberInput"] input { width: 100%; }
     }
     </style>
 """
 
 # ==========================================
-# 2. 资源加载与安全层 (Resources & Security)
+# 2. 资源加载与安全层
 # ==========================================
 @st.cache_resource
 def load_custom_font():
@@ -99,37 +83,32 @@ def load_custom_font():
 def check_password():
     if "authenticated" not in st.session_state: st.session_state["authenticated"] = False
     if st.session_state["authenticated"]: return
-    st.markdown("# 🔒 访问受限 (Access Restricted)")
-    st.markdown("此模型包含敏感商业数据，请输入授权密码继续。")
-    st.markdown("---")
+    st.markdown("# 🔒 访问受限")
     with st.form("login_form"):
-        password_input = st.text_input("访问密码", type="password", placeholder="Enter Password...", label_visibility="collapsed")
-        submit_button = st.form_submit_button("🔓 验证登录 (Verify)", type="primary", use_container_width=True)
+        password_input = st.text_input("请输入授权密码", type="password", label_visibility="collapsed")
+        submit_button = st.form_submit_button("验证登录", type="primary", use_container_width=True)
         if submit_button:
             if password_input == ADMIN_PASSWORD:
                 st.session_state["authenticated"] = True
-                st.toast("验证成功。", icon="✅")
                 st.rerun()
-            else: st.error("❌ 密码错误。")
+            else: st.error("密码错误")
     st.stop()
 
 # ==========================================
-# 3. 工具函数层 (Utility Functions)
+# 3. 工具函数层
 # ==========================================
 def dataframe_to_png(df, font_prop):
     df_display = df.copy()
     for col in df_display.columns:
         if pd.api.types.is_numeric_dtype(df_display[col]) and col != "年份":
-             df_display[col] = df_display[col].apply(
-                 lambda x: f"{x:,.0f}" if abs(x) > 100 else (f"{x:.1f}" if abs(x) > 1 else f"{x:.2f}")
-             )
+             df_display[col] = df_display[col].apply(lambda x: f"{x:,.0f}" if abs(x) > 100 else (f"{x:.1f}" if abs(x) > 1 else f"{x:.2f}"))
     fig, ax = plt.subplots(figsize=(14, len(df)*0.7 + 2))
     ax.axis('tight'); ax.axis('off')
     table = ax.table(cellText=df_display.values, colLabels=df_display.columns, loc='center', cellLoc='center')
     for key, cell in table.get_celld().items():
         cell.set_text_props(fontproperties=font_prop); cell.set_edgecolor('#e0e0e0')
         if key[0] == 0:
-            cell.set_facecolor('#2c5364'); cell.get_text().set_color('white'); cell.get_text().set_weight('bold'); cell.set_height(0.08)
+            cell.set_facecolor('#1a2a6c'); cell.get_text().set_color('white'); cell.get_text().set_weight('bold'); cell.set_height(0.08)
         else:
             cell.set_height(0.06)
             if key[0] % 2 == 0: cell.set_facecolor('#f8f9fa')
@@ -138,7 +117,7 @@ def dataframe_to_png(df, font_prop):
     return buf
 
 # ==========================================
-# 4. 核心逻辑层 (Core Logic) - 纯计算
+# 4. 核心逻辑层 (计算)
 # ==========================================
 def calculate_capex_details(inputs):
     capex_charger = (inputs['price_pile_unit'] * inputs['qty_piles'])
@@ -198,138 +177,122 @@ def calculate_financial_model(edited_df, capex_data, inputs):
     return pd.DataFrame(results), payback_year
 
 # ==========================================
-# 5. 界面渲染层 (UI Rendering) - 纯展示
+# 5. 界面渲染层 (UI Rendering) - 从上到下流程
 # ==========================================
 def render_header():
     st.markdown(CSS_STYLES, unsafe_allow_html=True)
     st.markdown("""
         <div class="main-header-container">
             <div class="main-title">🇦🇪 迪拜新能源超充站 · 投资测算模型</div>
-            <div class="sub-title">V10.4.1 Ultimate | 侧边栏集成控制台 | 专业级UI体验</div>
+            <div class="sub-title">V10.5 Ultimate | 极简流线版 | 动态电价 | 精细化折旧</div>
         </div>
     """, unsafe_allow_html=True)
 
-def render_sidebar_and_get_inputs():
-    """渲染整合后的侧边栏控制台，并返回所有输入和提交状态"""
-    with st.sidebar:
-        st.header("🎛️ 控制台 (Control Panel)")
-        
-        # --- 配置导入 (表单外) ---
-        with st.expander("📂 导入/恢复配置", expanded=False):
-            uploaded_config = st.file_uploader("上传CSV", type=["csv"], label_visibility="collapsed")
-            if uploaded_config is not None:
-                try:
-                    df_uploaded = pd.read_csv(uploaded_config)
-                    required_columns = ["单枪日均充电量 (kWh)", "运营人数 (人)", "人均年薪 (AED)"]
-                    if all(col in df_uploaded.columns for col in required_columns):
-                        st.session_state['df_config_cache'] = df_uploaded
-                        st.toast("✅ 配置已加载。", icon="📂")
-                    else: st.error("❌ 格式错误。")
-                except Exception as e: st.error(f"❌ 读取失败：{e}")
-        st.divider()
-        
-        # --- 主输入表单 (包含所有参数) ---
-        with st.form("main_calculator_form"):
-            st.subheader("1. 项目规模与周期 (Project Setup)")
-            inputs = {}
-            # 【关键修复】全部使用关键字参数 value, min_value, max_value, step
+def render_config_import():
+    """配置导入区"""
+    with st.expander("📂 **导入历史配置 (Optional)**", expanded=False):
+        uploaded_config = st.file_uploader("上传CSV文件恢复表格设置", type=["csv"])
+        if uploaded_config is not None:
+            try:
+                df_uploaded = pd.read_csv(uploaded_config)
+                required_columns = ["单枪日均充电量 (kWh)", "运营人数 (人)", "人均年薪 (AED)"]
+                if all(col in df_uploaded.columns for col in required_columns):
+                    st.session_state['df_config_cache'] = df_uploaded
+                    st.toast("配置已加载，将在下方表格中生效。", icon="✅")
+                else: st.error("CSV格式错误，缺少必要列。")
+            except Exception as e: st.error(f"读取失败：{e}")
+
+def render_base_params_section():
+    """第一部分：基础参数设置 (默认折叠)"""
+    st.header("1. 基础参数设置 (Base Parameters)")
+    with st.expander("⚙️ **点击展开/收起基准配置 (Advanced Config)**", expanded=False):
+        st.caption("包含供应链单价、运营基准费用及核心财务假设。")
+        inputs = {}
+        t1, t2, t3 = st.tabs(["🏗️ CAPEX基建", "🛠️ OPEX运营", "📉 财务假设"])
+        with t1:
             c1, c2 = st.columns(2)
-            inputs['qty_piles'] = c1.number_input("拟投主机(台)", value=2, min_value=1, max_value=100, step=1)
-            inputs['qty_trans'] = c2.number_input("拟投变压器(台)", value=1, min_value=1, max_value=20, step=1)
-            
-            c3, c4 = st.columns(2)
-            inputs['interest_rate'] = c3.number_input("资金成本(%)", value=5.0, min_value=0.0, max_value=30.0, step=0.5) / 100
-            inputs['years_duration'] = c4.number_input("测算年限(年)", value=10, min_value=5, max_value=20, step=1)
-            
-            c5, c6 = st.columns(2)
-            inputs['price_sale'] = c5.number_input("销售电价(AED)", value=1.20, min_value=0.1, max_value=5.0, step=0.05)
-            inputs['price_cost'] = c6.number_input("进货电价(AED)", value=0.44, min_value=0.1, max_value=5.0, step=0.05)
-
+            inputs['pile_power_kw'] = c1.number_input("主机功率(kW)", value=480, step=20)
+            inputs['guns_per_pile'] = c2.number_input("单机枪数(把)", value=6, step=1)
+            inputs['price_pile_unit'] = st.number_input("主机单价(AED)", value=200000, step=5000)
+            tt1, tt2 = st.columns(2)
+            trans_type = tt1.selectbox("变电站规格", ["1000 kVA", "1500 kVA"])
+            inputs['trans_val'] = 1000 if "1000" in trans_type else 1500
+            inputs['price_trans_unit'] = tt2.number_input("变电站单价", value=(200000 if inputs['trans_val']==1000 else 250000), step=5000)
             st.markdown("---")
-            st.subheader("⚙️ 后台参数微调 (Backend Config)")
-            
-            with st.expander("🏗️ CAPEX 基建设备参数", expanded=False):
-                ec1, ec2 = st.columns(2)
-                inputs['pile_power_kw'] = ec1.number_input("主机功率(kW)", value=480, min_value=0, max_value=2000, step=20)
-                inputs['guns_per_pile'] = ec2.number_input("单机枪数(把)", value=6, min_value=1, max_value=30, step=1)
-                inputs['price_pile_unit'] = st.number_input("主机单价(AED)", value=200000, min_value=0, max_value=2000000, step=5000)
-                tc1, tc2 = st.columns(2)
-                trans_type = tc1.selectbox("变电站规格", ["1000 kVA", "1500 kVA"])
-                inputs['trans_val'] = 1000 if "1000" in trans_type else 1500
-                default_trans_price = (200000 if inputs['trans_val']==1000 else 250000)
-                inputs['price_trans_unit'] = tc2.number_input("变电站单价", value=default_trans_price, min_value=0, max_value=2000000, step=5000)
-                inputs['cost_dewa_conn'] = st.number_input("DEWA接入费", value=200000, min_value=0, max_value=2000000, step=10000)
-                inputs['cost_civil_work'] = st.number_input("土建施工费", value=150000, min_value=0, max_value=2000000, step=10000)
-                inputs['cost_hv_cable'] = st.number_input("高压电缆", value=20000, min_value=0, max_value=500000, step=1000)
-                inputs['cost_lv_cable'] = st.number_input("低压电缆", value=80000, min_value=0, max_value=500000, step=5000)
-                inputs['cost_canopy'] = st.number_input("遮阳棚品牌", value=80000, min_value=0, max_value=1000000, step=5000)
-                inputs['cost_design'] = st.number_input("设计顾问费", value=40000, min_value=0, max_value=500000, step=5000)
-                inputs['cost_weak_current_total'] = st.number_input("弱电系统总包", value=70000, min_value=0, max_value=500000, step=5000)
-                inputs['other_cost_1'] = st.number_input("前期开办费", value=30000, min_value=0, max_value=500000, step=5000)
-                inputs['other_cost_2'] = st.number_input("不可预见金", value=20000, min_value=0, max_value=500000, step=5000)
+            inputs['cost_dewa_conn'] = st.number_input("DEWA接入费", value=200000, step=10000)
+            inputs['cost_civil_work'] = st.number_input("土建施工费", value=150000, step=10000)
+            inputs['cost_weak_current_total'] = st.number_input("弱电/杂项/开办费总计", value=120000, step=10000)
+            inputs['cost_hv_cable'] = 20000; inputs['cost_lv_cable'] = 80000; inputs['cost_canopy'] = 80000; inputs['cost_design'] = 40000; inputs['other_cost_1'] = 0; inputs['other_cost_2'] = 0 # 简化显示
 
-            with st.expander("🛠️ OPEX 固定运营参数", expanded=False):
-                inputs['base_rent'] = st.number_input("车位租金(AED/年)", value=96000, min_value=0, max_value=2000000, step=5000)
-                inputs['base_it_saas'] = st.number_input("IT/SaaS(AED/年)", value=50000, min_value=0, max_value=500000, step=1000)
-                inputs['base_marketing'] = st.number_input("广告营销(AED/年)", value=50000, min_value=0, max_value=500000, step=1000)
-                inputs['base_maintenance'] = st.number_input("维保外包(AED/年)", value=30000, min_value=0, max_value=500000, step=1000)
+        with t2:
+            inputs['base_rent'] = st.number_input("车位租金(AED/年)", value=96000, step=5000)
+            inputs['base_it_saas'] = st.number_input("IT/SaaS/营销/维保总计(AED/年)", value=130000, step=5000)
+            inputs['base_marketing'] = 0; inputs['base_maintenance'] = 0 # 简化显示
 
-            with st.expander("📉 财务核心假设", expanded=True):
-                fc1, fc2 = st.columns(2)
-                inputs['power_efficiency'] = fc1.number_input("⚡ 电能效率(%)", value=95.0, min_value=50.0, max_value=100.0, step=0.5) / 100
-                inputs['inflation_rate'] = fc2.number_input("📈 通胀率(%)", value=3.0, min_value=0.0, max_value=50.0, step=0.5) / 100
-                pc1, pc2 = st.columns(2)
-                inputs['price_sale_growth'] = pc1.number_input("💹 销售涨幅(%)", value=0.0, min_value=-10.0, max_value=20.0, step=0.5) / 100
-                inputs['price_cost_growth'] = pc2.number_input("💹 成本涨幅(%)", value=0.0, min_value=-10.0, max_value=20.0, step=0.5) / 100
-                tc1, tc2 = st.columns(2)
-                inputs['tax_rate'] = tc1.number_input("🏛️ 税率(%)", value=9.0, min_value=0.0, max_value=50.0, step=1.0) / 100
-                inputs['tax_threshold'] = tc2.number_input("免税额度", value=375000, min_value=0, max_value=5000000, step=10000)
-                dc1, dc2 = st.columns(2)
-                inputs['dep_years_charger'] = dc1.number_input("🔋 设备折旧(年)", value=5, min_value=2, max_value=15, step=1)
-                inputs['dep_years_infra'] = dc2.number_input("🏗️ 基建折旧(年)", value=15, min_value=5, max_value=40, step=1)
+        with t3:
+            f1, f2 = st.columns(2)
+            inputs['power_efficiency'] = f1.number_input("⚡ 电能效率(%)", value=95.0, step=0.5) / 100
+            inputs['inflation_rate'] = f2.number_input("📈 通胀率(%)", value=3.0, step=0.5) / 100
+            p1, p2 = st.columns(2)
+            inputs['price_sale_growth'] = p1.number_input("💹 销售涨幅(%)", value=0.0, step=0.5) / 100
+            inputs['price_cost_growth'] = p2.number_input("💹 成本涨幅(%)", value=0.0, step=0.5) / 100
+            tx1, tx2 = st.columns(2)
+            inputs['tax_rate'] = tx1.number_input("🏛️ 税率(%)", value=9.0, step=1.0) / 100
+            inputs['tax_threshold'] = tx2.number_input("免税额度", value=375000, step=10000)
+            dp1, dp2 = st.columns(2)
+            inputs['dep_years_charger'] = dp1.number_input("🔋 设备折旧(年)", value=5, step=1)
+            inputs['dep_years_infra'] = dp2.number_input("🏗️ 基建折旧(年)", value=15, step=1)
+    return inputs
 
-            st.write("") # Spacer
-            # --- 重点优化：简化的提交按钮，位于侧边栏最底部 ---
-            submitted = st.form_submit_button("🚀 运行测算 (Run Analysis)", type="primary", use_container_width=True)
-            
-    return inputs, submitted
+def render_project_scale_section(inputs):
+    """第二部分：项目规模与周期 (核心输入)"""
+    st.header("2. 项目规模与周期 (Project Scale)")
+    with st.container(border=True):
+        c1, c2, c3 = st.columns(3)
+        with c1:
+            st.markdown("##### A. 设备数量")
+            inputs['qty_piles'] = st.number_input("拟投超充主机 (台)", value=2, min_value=1, step=1)
+            inputs['qty_trans'] = st.number_input("拟投变压器 (台)", value=1, min_value=1, step=1)
+        with c2:
+            st.markdown("##### B. 资金与电价 (Y1基准)")
+            inputs['interest_rate'] = st.number_input("资金成本费率 (%)", value=5.0, step=0.5) / 100
+            inputs['price_sale'] = st.number_input("销售电价 (AED/kWh)", value=1.20, step=0.05)
+            inputs['price_cost'] = st.number_input("进货电价 (AED/kWh)", value=0.44, step=0.05)
+        with c3:
+            st.markdown("##### C. 周期设定")
+            # 关键：此输入改变会立即触发整个页面刷新，更新下方的表格
+            inputs['years_duration'] = st.number_input("运营测算年限 (年)", value=10, min_value=3, max_value=20, step=1)
 
-def render_main_content(all_inputs, form_submitted):
-    """渲染主界面内容"""
-    # 容量校验 (实时显示)
-    total_power = all_inputs['qty_piles'] * all_inputs['pile_power_kw']
-    total_trans = all_inputs['qty_trans'] * all_inputs['trans_val']
-    if total_power > total_trans:
-        st.warning(f"⚠️ **容量提示**: 总功率 {total_power}kW > 变压器 {total_trans}kVA")
-    else:
-        st.success(f"✅ **配置确认**: {all_inputs['qty_piles']*all_inputs['guns_per_pile']}枪 | 总功率 {total_power}kW | 变压器 {total_trans}kVA")
-
-    # 计算并显示 CAPEX 明细
-    capex_data = calculate_capex_details(all_inputs)
-    with st.expander("💰 **查看 Year 0 初始投资 (CAPEX) 明细**", expanded=False):
-        st.info(f"**总投入：{capex_data['total_capex']:,.0f} AED**")
-        c1, c2 = st.columns(2)
-        c1.metric("🔋 充电设备类投资", f"{capex_data['capex_charger']:,.0f} AED")
-        c2.metric("🏗️ 基建与电力配套投资", f"{capex_data['capex_infra']:,.0f} AED")
-
-    # 渲染动态表格 (主界面核心)
-    st.header("2. 年度运营推演核心表 (Dynamic Table)")
-    st.info("👉 请在左侧设置参数，并在下方表格修改年度假设，最后点击侧边栏底部的 **“🚀 运行测算”** 按钮。")
+    # 实时容量校验
+    total_power = inputs['qty_piles'] * inputs['pile_power_kw']
+    total_trans = inputs['qty_trans'] * inputs['trans_val']
+    if total_power > total_trans: st.warning(f"⚠️ 容量提示: 总功率 {total_power}kW > 变压器 {total_trans}kVA")
+    else: st.success(f"✅ 配置确认: {inputs['qty_piles']*inputs['guns_per_pile']}枪 | 总功率 {total_power}kW | 变压器 {total_trans}kVA")
     
-    years_duration = all_inputs['years_duration']
+    return inputs
+
+def render_capex_preview(inputs):
+    """插入部分：CAPEX 即时预览"""
+    capex_data = calculate_capex_details(inputs)
+    with st.container(border=True):
+        st.markdown(f"**💰 Year 0 初始投资预览：{capex_data['total_capex']:,.0f} AED**")
+        # st.caption(f"设备类: {capex_data['capex_charger']:,.0f} | 基建类: {capex_data['capex_infra']:,.0f}")
+    return capex_data
+
+def render_dynamic_table_section(years_duration):
+    """第三部分：年度运营推演表格"""
+    st.header("3. 年度运营推演 (Annual Operations)")
+    st.caption("请在下方表格中直接修改每年的关键运营假设。")
+
     df_input = None
     if st.session_state.get('df_config_cache') is not None:
         df_uploaded = st.session_state['df_config_cache']
-        required_cols = ["单枪日均充电量 (kWh)", "运营人数 (人)", "人均年薪 (AED)"]
-        if all(col in df_uploaded.columns for col in required_cols):
-            if len(df_uploaded) < years_duration:
-                last_row = df_uploaded.iloc[-1]
-                df_extra = pd.DataFrame([last_row] * (years_duration - len(df_uploaded)))
-                df_input = pd.concat([df_uploaded, df_extra], ignore_index=True)
-            else: df_input = df_uploaded.head(years_duration)
-        else: st.session_state.pop('df_config_cache', None)
-
-    if df_input is None:
+        if len(df_uploaded) < years_duration:
+            last_row = df_uploaded.iloc[-1]
+            df_extra = pd.DataFrame([last_row] * (years_duration - len(df_uploaded)))
+            df_input = pd.concat([df_uploaded, df_extra], ignore_index=True)
+        else: df_input = df_uploaded.head(years_duration)
+    else:
         long_daily_kwh = DEFAULT_PARAMS['daily_kwh'] + [DEFAULT_PARAMS['daily_kwh'][-1]] * years_duration
         long_staff = DEFAULT_PARAMS['staff'] + [DEFAULT_PARAMS['staff'][-1]] * years_duration
         long_salary = DEFAULT_PARAMS['salary'] + [DEFAULT_PARAMS['salary'][-1]] * years_duration
@@ -342,52 +305,56 @@ def render_main_content(all_inputs, form_submitted):
         df_input,
         column_config={
             "年份": st.column_config.TextColumn(disabled=True, width="small"),
-            "单枪日均充电量 (kWh)": st.column_config.NumberColumn(label="✏️ 单枪日均充电量 (kWh)", min_value=0, max_value=2000, step=10, required=True, format="%d kWh"),
-            "运营人数 (人)": st.column_config.NumberColumn(label="✏️ 运营人数 (人)", min_value=0, step=1, format="%d 人"),
-            "人均年薪 (AED)": st.column_config.NumberColumn(label="✏️ 人均年薪 (AED)", format="%d AED")
+            "单枪日均充电量 (kWh)": st.column_config.NumberColumn(label="✏️ 日均充电量 (kWh)", min_value=0, max_value=2000, step=10, required=True, format="%d"),
+            "运营人数 (人)": st.column_config.NumberColumn(label="✏️ 运营人数 (人)", min_value=0, step=1, format="%d"),
+            "人均年薪 (AED)": st.column_config.NumberColumn(label="✏️ 人均年薪 (AED)", format="%d")
         },
         hide_index=True, use_container_width=True, height=int(38 * (min(years_duration, 12) + 2))
     )
-    return edited_df, capex_data
+    return edited_df
 
-def render_financial_report(df_res, total_capex, payback_year, years_duration):
+def render_run_button():
+    """渲染运行按钮"""
     st.divider()
-    st.header("📊 财务评估结果 (Financial Report)")
+    # 这是一个独立的按钮，点击会触发页面刷新，并设置 session state
+    run_pressed = st.button("🚀 开始测算 (Run Analysis)", type="primary", use_container_width=True)
+    return run_pressed
+
+def render_results_section(df_res, total_capex, payback_year, edited_df, font_prop):
+    """渲染结果与下载区"""
+    st.divider()
+    st.header("📊 测算结果报告 (Results Report)")
+    
     total_net_profit = df_res["净利润"].sum()
     total_fcf_ops = df_res["净利润"].sum() + df_res["折旧(抵税)"].sum() 
     
     c1, c2, c3, c4 = st.columns(4)
-    c1.metric("💰 初始总投资 (CAPEX)", f"{total_capex:,.0f}", help="建设期总投入")
-    c2.metric("💸 运营期总净利", f"{total_net_profit:,.0f}", help="测算期内税后净利润总和")
-    c3.metric("🌊 运营期自由现金流", f"{total_fcf_ops:,.0f}", help="测算期内经营活动产生的现金流 (净利润+折旧)")
-    if payback_year and payback_year <= years_duration + 1: c4.metric("⏱️ 动态回本期", f"{payback_year:.1f} 年", delta="已回本", delta_color="normal")
+    c1.metric("💰 初始总投资 (CAPEX)", f"{total_capex:,.0f}")
+    c2.metric("💸 运营期总净利", f"{total_net_profit:,.0f}")
+    c3.metric("🌊 运营期自由现金流", f"{total_fcf_ops:,.0f}")
+    if payback_year and payback_year <= len(df_res) + 1: c4.metric("⏱️ 动态回本期", f"{payback_year:.1f} 年", delta="已回本", delta_color="normal")
     else: c4.metric("⏱️ 动态回本期", "未回本", delta="周期外", delta_color="inverse")
-    st.write("")
 
-    tab_chart, tab_table = st.tabs(["📈 累计现金流曲线 (J-Curve)", "📄 详细现金流表 (Cash Flow)"])
-    with tab_chart: st.area_chart(df_res.set_index("年份")["累计现金流"], color="#2c5364", use_container_width=True)
+    tab_chart, tab_table = st.tabs(["📈 现金流曲线", "📄 详细报表"])
+    with tab_chart: st.area_chart(df_res.set_index("年份")["累计现金流"], color="#1a2a6c", use_container_width=True)
     with tab_table:
         cols_to_show = ["营收", "成本(OPEX)", "折旧(抵税)", "息税前利(EBIT)", "税金", "净利润", "自由现金流(FCF)", "累计现金流"]
         st.dataframe(df_res.style.format("{:,.0f}", subset=cols_to_show), use_container_width=True)
 
-def render_download_section(df_res, edited_df, font_prop):
     st.divider()
-    with st.container(border=True):
-        st.write("📥 **数据存取中心 (Data Center)**")
+    with st.expander("📥 **下载数据与报告 (Download)**", expanded=False):
         c1, c2 = st.columns(2)
         with c1:
-            st.caption("导出结果")
             csv_report = df_res.to_csv(index=False).encode('utf-8-sig')
-            st.download_button("📄 下载财务报告 (.csv)", csv_report, 'dubai_financial_report_v10.4.1.csv', 'text/csv', use_container_width=True)
+            st.download_button("📄 下载财务报告 (.csv)", csv_report, 'financial_report_v10.5.csv', 'text/csv', use_container_width=True)
             png_buffer = dataframe_to_png(df_res, font_prop)
-            st.download_button("🖼️ 下载表格图片 (.png)", png_buffer, 'dubai_financial_report_v10.4.1.png', 'image/png', use_container_width=True)
+            st.download_button("🖼️ 下载表格图片 (.png)", png_buffer, 'financial_report_v10.5.png', 'image/png', use_container_width=True)
         with c2:
-            st.caption("保存配置")
             csv_config = edited_df[["单枪日均充电量 (kWh)", "运营人数 (人)", "人均年薪 (AED)"]].to_csv(index=False).encode('utf-8-sig')
-            st.download_button("💾 保存当前运营配置 (.csv)", csv_config, 'operation_config_v10.4.1.csv', 'text/csv', use_container_width=True)
+            st.download_button("💾 保存当前配置 (.csv)", csv_config, 'operation_config_v10.5.csv', 'text/csv', use_container_width=True)
 
 # ==========================================
-# 6. 主控制流 (Main Execution)
+# 6. 主控制流 (线性执行)
 # ==========================================
 def main():
     st.set_page_config(**PAGE_CONFIG)
@@ -395,25 +362,25 @@ def main():
     check_password()
     render_header()
 
-    # 1. 渲染侧边栏并获取所有输入和提交状态
-    all_inputs, form_submitted = render_sidebar_and_get_inputs()
+    # --- 从上到下的线性流程 ---
+    render_config_import() # 0. 导入
+    inputs = render_base_params_section() # 1. 基础参数
+    inputs = render_project_scale_section(inputs) # 2. 项目规模 (更新inputs)
+    capex_data = render_capex_preview(inputs) # 插入: CAPEX预览
+    edited_df = render_dynamic_table_section(inputs['years_duration']) # 3. 年度推演
+    
+    # 运行按钮与状态管理
+    if 'run_analysis' not in st.session_state: st.session_state['run_analysis'] = False
+    if render_run_button(): # 如果按钮被点击
+        st.session_state['run_analysis'] = True # 设置状态为真
 
-    # 2. 渲染主界面 (CAPEX信息 和 动态表格)
-    edited_df, capex_data = render_main_content(all_inputs, form_submitted)
-
-    # 3. 计算触发逻辑
-    if 'calc_trigger' not in st.session_state: st.session_state['calc_trigger'] = False
-    if form_submitted: st.session_state['calc_trigger'] = True
-
-    if st.session_state['calc_trigger']:
-        # 执行核心计算
-        df_res, payback_year = calculate_financial_model(edited_df, capex_data, all_inputs)
-        # 渲染结果和下载区
-        render_financial_report(df_res, capex_data['total_capex'], payback_year, all_inputs['years_duration'])
-        render_download_section(df_res, edited_df, zh_font)
+    # 根据状态显示结果
+    if st.session_state['run_analysis']:
+        with st.spinner("正在进行复杂财务测算..."):
+            df_res, payback_year = calculate_financial_model(edited_df, capex_data, inputs)
+        render_results_section(df_res, capex_data['total_capex'], payback_year, edited_df, zh_font)
     else:
-        st.divider()
-        st.info("👋 欢迎使用！请在左侧控制台调整参数，完成后点击 **“🚀 运行测算”**。")
+        st.info("👉 请按照顺序设置参数，最后点击上方按钮开始测算。")
 
 if __name__ == "__main__":
     main()
