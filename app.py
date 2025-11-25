@@ -10,7 +10,7 @@ import matplotlib.font_manager as fm
 # ==========================================
 PAGE_CONFIG = {
     "layout": "wide",
-    "page_title": "迪拜新能源超充投资模型 V10.3 Ultimate",
+    "page_title": "迪拜新能源超充投资模型 V10.3.1 Fixed",
     "page_icon": "🇦🇪",
     "initial_sidebar_state": "expanded"
 }
@@ -30,7 +30,7 @@ CSS_STYLES = """
     <style>
     /* 头部横幅样式 */
     .main-header-container {
-        background: linear-gradient(90deg, #0f2027 0%, #203a43 50%, #2c5364 100%); /* 更深邃的迪拜夜景配色 */
+        background: linear-gradient(90deg, #0f2027 0%, #203a43 50%, #2c5364 100%);
         padding: 2.5rem 1rem;
         border-radius: 0 0 20px 20px;
         color: white; text-align: center;
@@ -58,7 +58,7 @@ CSS_STYLES = """
         height: 3.5rem;
         font-size: 1.2rem;
         font-weight: 700;
-        background: linear-gradient(90deg, #2c5364 0%, #203a43 100%); /* 使用主题深色渐变 */
+        background: linear-gradient(90deg, #2c5364 0%, #203a43 100%);
         border: none;
         box-shadow: 0 4px 12px rgba(44, 83, 100, 0.4);
         transition: all 0.3s ease;
@@ -89,7 +89,6 @@ def load_custom_font():
     if os.path.exists(font_path):
         return fm.FontProperties(fname=font_path)
     else:
-        # print(f"Warning: Font '{FONT_FILENAME}' not found.")
         return fm.FontProperties(family='sans-serif')
 
 def check_password():
@@ -119,20 +118,18 @@ def check_password():
 def dataframe_to_png(df, font_prop):
     """将 DataFrame 渲染为精美 PNG 图像"""
     df_display = df.copy()
-    # 智能数值格式化
     for col in df_display.columns:
         if pd.api.types.is_numeric_dtype(df_display[col]) and col != "年份":
              df_display[col] = df_display[col].apply(
                  lambda x: f"{x:,.0f}" if abs(x) > 100 else (f"{x:.1f}" if abs(x) > 1 else f"{x:.2f}")
              )
 
-    fig, ax = plt.subplots(figsize=(14, len(df)*0.7 + 2)) # 调整画布大小
+    fig, ax = plt.subplots(figsize=(14, len(df)*0.7 + 2))
     ax.axis('tight')
     ax.axis('off')
     
     table = ax.table(cellText=df_display.values, colLabels=df_display.columns, loc='center', cellLoc='center')
     
-    # 应用字体与样式
     for key, cell in table.get_celld().items():
         cell.set_text_props(fontproperties=font_prop)
         cell.set_edgecolor('#e0e0e0')
@@ -143,7 +140,7 @@ def dataframe_to_png(df, font_prop):
             cell.set_height(0.08)
         else: # 数据行
             cell.set_height(0.06)
-            if key[0] % 2 == 0: # 隔行变色
+            if key[0] % 2 == 0:
                 cell.set_facecolor('#f8f9fa')
 
     table.auto_set_font_size(False)
@@ -161,17 +158,14 @@ def dataframe_to_png(df, font_prop):
 # ==========================================
 def calculate_capex_details(inputs):
     """计算 CAPEX 明细，返回字典以便分类折旧"""
-    # 1. 充电设备类
     capex_charger = (inputs['price_pile_unit'] * inputs['qty_piles'])
     
-    # 2. 变电站及基建类 (包含变压器、电力接入、土建、弱电、杂项)
     capex_trans = (inputs['price_trans_unit'] * inputs['qty_trans'])
     capex_power_infra = inputs['cost_dewa_conn'] + inputs['cost_hv_cable'] + inputs['cost_lv_cable']
     capex_civil = inputs['cost_civil_work'] + inputs['cost_canopy'] + inputs['cost_design']
     capex_others = inputs['cost_weak_current_total'] + inputs['other_cost_1'] + inputs['other_cost_2']
     
     capex_infra_total = capex_trans + capex_power_infra + capex_civil + capex_others
-    
     total_capex = capex_charger + capex_infra_total
     
     return {
@@ -196,30 +190,24 @@ def calculate_financial_model(edited_df, capex_data, inputs):
     
     # --- 核心升级：计算分类年折旧额 (直线法) ---
     dep_charger_annual = capex_data["capex_charger"] / inputs['dep_years_charger'] if inputs['dep_years_charger'] > 0 else 0
-    # 基建类资产通常折旧年限更长
     dep_infra_annual = capex_data["capex_infra"] / inputs['dep_years_infra'] if inputs['dep_years_infra'] > 0 else 0
-    total_annual_depreciation = dep_charger_annual + dep_infra_annual
     # ---------------------------------------
 
     # 年度迭代
     for index, row in edited_df.iterrows():
-        year_idx = index # 0-indexed (Y1=0)
+        year_idx = index
         year_num = year_idx + 1
         
-        # 1. 获取年度输入变量
         daily_kwh = row["单枪日均充电量 (kWh)"]
         staff_count = row["运营人数 (人)"]
         salary_avg = row["人均年薪 (AED)"]
         
-        # 2. 计算动态电价 (考虑年增长率)
         current_price_sale = inputs['price_sale'] * ((1 + inputs['price_sale_growth']) ** year_idx)
         current_price_cost = inputs['price_cost'] * ((1 + inputs['price_cost_growth']) ** year_idx)
 
-        # 3. 收入计算
         annual_sales_kwh = daily_kwh * total_guns * 365
         revenue = annual_sales_kwh * current_price_sale
         
-        # 4. 支出计算 (OPEX)
         annual_buy_kwh = annual_sales_kwh / inputs['power_efficiency']
         cost_power = annual_buy_kwh * current_price_cost
         
@@ -230,32 +218,26 @@ def calculate_financial_model(edited_df, capex_data, inputs):
         
         total_opex = cost_power + current_labor + current_fixed
         
-        # 5. 利润计算 (含折旧抵税逻辑)
-        ebitda = revenue - total_opex # 息税折旧前利润
+        ebitda = revenue - total_opex
         
-        # 计算当年实际折旧额 (考虑折旧期满)
+        # 计算当年实际折旧额
         current_dep_charger = dep_charger_annual if year_num <= inputs['dep_years_charger'] else 0
         current_dep_infra = dep_infra_annual if year_num <= inputs['dep_years_infra'] else 0
         current_total_depreciation = current_dep_charger + current_dep_infra
         
-        ebit = ebitda - current_total_depreciation # 息税前利润
+        ebit = ebitda - current_total_depreciation
         
-        cost_finance = total_capex * inputs['interest_rate'] # 资金成本(利息)
-        ebt = ebit - cost_finance # 税前利润
+        cost_finance = total_capex * inputs['interest_rate']
+        ebt = ebit - cost_finance
         
-        # 税务计算
         tax_amount = 0
         if ebt > inputs['tax_threshold']:
             tax_amount = (ebt - inputs['tax_threshold']) * inputs['tax_rate']
         
-        net_profit = ebt - tax_amount # 净利润
-        
-        # 6. 现金流计算 (FCF近似 = 净利润 + 折旧加回)
+        net_profit = ebt - tax_amount
         free_cash_flow = net_profit + current_total_depreciation
-        
         cumulative_cash += free_cash_flow
         
-        # 7. 回本期计算
         if payback_year is None and cumulative_cash >= 0:
             prev_cash = results[-1]["累计现金流"]
             if free_cash_flow > 0:
@@ -280,12 +262,12 @@ def render_header():
     st.markdown("""
         <div class="main-header-container">
             <div class="main-title">🇦🇪 迪拜新能源超充站 · 投资测算模型</div>
-            <div class="sub-title">V10.3 Ultimate | 精细化折旧抵税 | 动态电价 | 专业级UI交互</div>
+            <div class="sub-title">V10.3.1 Fixed | 精细化折旧抵税 | 动态电价 | 专业级UI交互</div>
         </div>
     """, unsafe_allow_html=True)
 
 def render_sidebar_content():
-    """渲染侧边栏：配置导入与后台参数"""
+    """渲染侧边栏：配置导入与后台参数 (已修复 MaxValue 错误)"""
     with st.sidebar:
         st.header("🎛️ 控制面板 (Control Panel)")
         
@@ -306,63 +288,65 @@ def render_sidebar_content():
         st.subheader("⚙️ 后台基准配置")
         inputs = {}
         
+        # 【关键修复】所有 number_input 均显式指定 value, step, min_value, max_value
         with st.expander("🏗️ **CAPEX 基建设备参数**", expanded=False):
             st.caption("核心设备与基建单价设定")
             c1, c2 = st.columns(2)
-            inputs['pile_power_kw'] = c1.number_input("主机功率(kW)", 480, 20)
-            inputs['guns_per_pile'] = c2.number_input("单机枪数(把)", 6, 1)
-            inputs['price_pile_unit'] = st.number_input("主机单价(AED)", 200000, 5000)
+            inputs['pile_power_kw'] = c1.number_input("主机功率(kW)", value=480, step=20, min_value=0, max_value=2000)
+            inputs['guns_per_pile'] = c2.number_input("单机枪数(把)", value=6, step=1, min_value=1, max_value=30)
+            inputs['price_pile_unit'] = st.number_input("主机单价(AED)", value=200000, step=5000, min_value=0, max_value=2000000)
             
             t1, t2 = st.columns(2)
             trans_type = t1.selectbox("变电站规格", ["1000 kVA", "1500 kVA"])
             inputs['trans_val'] = 1000 if "1000" in trans_type else 1500
-            inputs['price_trans_unit'] = t2.number_input("变电站单价(AED)", (200000 if inputs['trans_val']==1000 else 250000), 5000)
+            default_trans_price = (200000 if inputs['trans_val']==1000 else 250000)
+            inputs['price_trans_unit'] = t2.number_input("变电站单价(AED)", value=default_trans_price, step=5000, min_value=0, max_value=2000000)
             
             st.markdown("---")
             e1, e2 = st.columns(2)
-            inputs['cost_dewa_conn'] = e1.number_input("DEWA接入费", 200000, 10000)
-            inputs['cost_civil_work'] = e2.number_input("土建施工费", 150000, 10000)
-            inputs['cost_hv_cable'] = e1.number_input("高压电缆", 20000, 1000)
-            inputs['cost_lv_cable'] = e2.number_input("低压电缆", 80000, 5000)
-            inputs['cost_canopy'] = st.number_input("遮阳棚品牌", 80000, 5000)
-            inputs['cost_design'] = st.number_input("设计顾问费", 40000, 5000)
+            inputs['cost_dewa_conn'] = e1.number_input("DEWA接入费", value=200000, step=10000, min_value=0, max_value=2000000)
+            inputs['cost_civil_work'] = e2.number_input("土建施工费", value=150000, step=10000, min_value=0, max_value=2000000)
+            inputs['cost_hv_cable'] = e1.number_input("高压电缆", value=20000, step=1000, min_value=0, max_value=500000)
+            inputs['cost_lv_cable'] = e2.number_input("低压电缆", value=80000, step=5000, min_value=0, max_value=500000)
+            inputs['cost_canopy'] = st.number_input("遮阳棚品牌", value=80000, step=5000, min_value=0, max_value=1000000)
+            inputs['cost_design'] = st.number_input("设计顾问费", value=40000, step=5000, min_value=0, max_value=500000)
             
             st.markdown("---")
-            inputs['cost_weak_current_total'] = st.number_input("弱电系统总包", 70000, 5000, help="含监控、地锁、网络")
-            inputs['other_cost_1'] = st.number_input("前期开办费", 30000, 5000)
-            inputs['other_cost_2'] = st.number_input("不可预见金", 20000, 5000)
+            inputs['cost_weak_current_total'] = st.number_input("弱电系统总包", value=70000, step=5000, min_value=0, max_value=500000, help="含监控、地锁、网络")
+            inputs['other_cost_1'] = st.number_input("前期开办费", value=30000, step=5000, min_value=0, max_value=500000)
+            inputs['other_cost_2'] = st.number_input("不可预见金", value=20000, step=5000, min_value=0, max_value=500000)
 
         with st.expander("🛠️ **OPEX 固定运营参数**", expanded=False):
-            inputs['base_rent'] = st.number_input("车位租金(AED/年)", 96000, 5000)
-            inputs['base_it_saas'] = st.number_input("IT/SaaS(AED/年)", 50000, 1000)
-            inputs['base_marketing'] = st.number_input("广告营销(AED/年)", 50000, 1000)
-            inputs['base_maintenance'] = st.number_input("维保外包(AED/年)", 30000, 1000)
+            inputs['base_rent'] = st.number_input("车位租金(AED/年)", value=96000, step=5000, min_value=0, max_value=2000000)
+            inputs['base_it_saas'] = st.number_input("IT/SaaS(AED/年)", value=50000, step=1000, min_value=0, max_value=500000)
+            inputs['base_marketing'] = st.number_input("广告营销(AED/年)", value=50000, step=1000, min_value=0, max_value=500000)
+            inputs['base_maintenance'] = st.number_input("维保外包(AED/年)", value=30000, step=1000, min_value=0, max_value=500000)
 
         with st.expander("📉 **财务核心假设 (重点)**", expanded=True):
             f1, f2 = st.columns(2)
-            inputs['power_efficiency'] = f1.number_input("⚡ 电能效率(%)", 95.0, 0.5, 50.0, 100.0) / 100
-            inputs['inflation_rate'] = f2.number_input("📈 通胀率(%)", 3.0, 0.5) / 100
+            inputs['power_efficiency'] = f1.number_input("⚡ 电能效率(%)", value=95.0, step=0.5, min_value=50.0, max_value=100.0) / 100
+            inputs['inflation_rate'] = f2.number_input("📈 通胀率(%)", value=3.0, step=0.5, min_value=0.0, max_value=50.0) / 100
             
             st.markdown("---")
             st.caption("动态电价增长假设")
             p1, p2 = st.columns(2)
-            inputs['price_sale_growth'] = p1.number_input("💹 销售涨幅(%)", 0.0, 0.5, help="年环比增长") / 100
-            inputs['price_cost_growth'] = p2.number_input("💹 成本涨幅(%)", 0.0, 0.5, help="年环比增长") / 100
+            inputs['price_sale_growth'] = p1.number_input("💹 销售涨幅(%)", value=0.0, step=0.5, min_value=-10.0, max_value=20.0, help="年环比增长") / 100
+            inputs['price_cost_growth'] = p2.number_input("💹 成本涨幅(%)", value=0.0, step=0.5, min_value=-10.0, max_value=20.0, help="年环比增长") / 100
             
             st.markdown("---")
             st.caption("税务与折旧策略")
             t1, t2 = st.columns(2)
-            inputs['tax_rate'] = t1.number_input("🏛️ 税率(%)", 9.0, 1.0) / 100
-            inputs['tax_threshold'] = t2.number_input("免税额度", 375000, 10000)
+            inputs['tax_rate'] = t1.number_input("🏛️ 税率(%)", value=9.0, step=1.0, min_value=0.0, max_value=50.0) / 100
+            inputs['tax_threshold'] = t2.number_input("免税额度", value=375000, step=10000, min_value=0, max_value=2000000)
             
             # --- 核心升级：拆分折旧年限 ---
             d1, d2 = st.columns(2)
-            inputs['dep_years_charger'] = d1.number_input("🔋 充电设备折旧(年)", value=5, min_value=3, max_value=15, help="核心充电桩资产")
-            inputs['dep_years_infra'] = d2.number_input("🏗️ 基建变电折旧(年)", value=15, min_value=10, max_value=30, help="变电站、土建等长期资产")
+            inputs['dep_years_charger'] = d1.number_input("🔋 充电设备折旧(年)", value=5, step=1, min_value=2, max_value=15, help="核心充电桩资产")
+            inputs['dep_years_infra'] = d2.number_input("🏗️ 基建变电折旧(年)", value=15, step=1, min_value=5, max_value=40, help="变电站、土建等长期资产")
             # ---------------------------
             
         st.markdown("---")
-        st.caption("Dubai EV Theme V10.3")
+        st.caption("Dubai EV Theme V10.3.1")
     return inputs
 
 def render_project_inputs_form(backend_inputs):
@@ -374,16 +358,16 @@ def render_project_inputs_form(backend_inputs):
         c1, c2, c3 = st.columns(3)
         with c1:
             st.markdown("##### A. 设备数量")
-            inputs['qty_piles'] = st.number_input("拟投超充主机 (台)", 2, 1, 100)
-            inputs['qty_trans'] = st.number_input("拟投变压器 (台)", 1, 1, 20)
+            inputs['qty_piles'] = st.number_input("拟投超充主机 (台)", value=2, step=1, min_value=1, max_value=100)
+            inputs['qty_trans'] = st.number_input("拟投变压器 (台)", value=1, step=1, min_value=1, max_value=20)
         with c2:
             st.markdown("##### B. 资金与电价 (Y1基准)")
-            inputs['interest_rate'] = st.number_input("资金成本费率 (%)", 5.0, 0.5) / 100
-            inputs['price_sale'] = st.number_input("销售电价 (AED/kWh)", 1.20, 0.05)
-            inputs['price_cost'] = st.number_input("进货电价 (AED/kWh)", 0.44, 0.05)
+            inputs['interest_rate'] = st.number_input("资金成本费率 (%)", value=5.0, step=0.5, min_value=0.0, max_value=20.0) / 100
+            inputs['price_sale'] = st.number_input("销售电价 (AED/kWh)", value=1.20, step=0.05, min_value=0.1, max_value=5.0)
+            inputs['price_cost'] = st.number_input("进货电价 (AED/kWh)", value=0.44, step=0.05, min_value=0.1, max_value=5.0)
         with c3:
             st.markdown("##### C. 周期设定")
-            inputs['years_duration'] = st.number_input("运营测算年限 (年)", value=10, min_value=5, max_value=20)
+            inputs['years_duration'] = st.number_input("运营测算年限 (年)", value=10, step=1, min_value=5, max_value=20)
         
         st.write("") # spacer
         # --- 重点优化：现代感提交按钮，置于底部 ---
@@ -417,10 +401,9 @@ def render_dynamic_table(years_duration):
             else:
                 df_input = df_uploaded.head(years_duration)
         else:
-             st.session_state.pop('df_config_cache', None) # 清除无效缓存
+             st.session_state.pop('df_config_cache', None)
 
     if df_input is None:
-        # 使用默认爬坡数据生成
         long_daily_kwh = DEFAULT_PARAMS['daily_kwh'] + [DEFAULT_PARAMS['daily_kwh'][-1]] * years_duration
         long_staff = DEFAULT_PARAMS['staff'] + [DEFAULT_PARAMS['staff'][-1]] * years_duration
         long_salary = DEFAULT_PARAMS['salary'] + [DEFAULT_PARAMS['salary'][-1]] * years_duration
@@ -438,7 +421,7 @@ def render_dynamic_table(years_duration):
         df_input,
         column_config={
             "年份": st.column_config.TextColumn(disabled=True, width="small"),
-            "单枪日均充电量 (kWh)": st.column_config.NumberColumn(label="✏️ 单枪日均充电量 (kWh)", min_value=0, max_value=1500, step=10, required=True, format="%d kWh"),
+            "单枪日均充电量 (kWh)": st.column_config.NumberColumn(label="✏️ 单枪日均充电量 (kWh)", min_value=0, max_value=2000, step=10, required=True, format="%d kWh"),
             "运营人数 (人)": st.column_config.NumberColumn(label="✏️ 运营人数 (人)", min_value=0, step=1, format="%d 人"),
             "人均年薪 (AED)": st.column_config.NumberColumn(label="✏️ 人均年薪 (AED)", format="%d AED")
         },
@@ -449,7 +432,6 @@ def render_dynamic_table(years_duration):
 def render_financial_report(df_res, total_capex, payback_year, years_duration):
     st.header("📊 财务评估结果 (Financial Report)")
     
-    # 计算关键总计
     total_net_profit = df_res["净利润"].sum()
     # FCFE近似 = 净利润总和 + 折旧总和 (运营期产生的现金)
     total_fcf_ops = df_res["净利润"].sum() + df_res["折旧(抵税)"].sum() 
@@ -480,13 +462,13 @@ def render_download_section(df_res, edited_df, font_prop):
         with c1:
             st.caption("导出结果")
             csv_report = df_res.to_csv(index=False).encode('utf-8-sig')
-            st.download_button("📄 下载财务报告 (.csv)", csv_report, 'dubai_financial_report_v10.3.csv', 'text/csv', use_container_width=True)
+            st.download_button("📄 下载财务报告 (.csv)", csv_report, 'dubai_financial_report_v10.3.1.csv', 'text/csv', use_container_width=True)
             png_buffer = dataframe_to_png(df_res, font_prop)
-            st.download_button("🖼️ 下载表格图片 (.png)", png_buffer, 'dubai_financial_report_v10.3.png', 'image/png', use_container_width=True)
+            st.download_button("🖼️ 下载表格图片 (.png)", png_buffer, 'dubai_financial_report_v10.3.1.png', 'image/png', use_container_width=True)
         with c2:
             st.caption("保存配置")
             csv_config = edited_df[["单枪日均充电量 (kWh)", "运营人数 (人)", "人均年薪 (AED)"]].to_csv(index=False).encode('utf-8-sig')
-            st.download_button("💾 保存当前运营配置 (.csv)", csv_config, 'operation_config_v10.3.csv', 'text/csv', use_container_width=True)
+            st.download_button("💾 保存当前运营配置 (.csv)", csv_config, 'operation_config_v10.3.1.csv', 'text/csv', use_container_width=True)
 
 # ==========================================
 # 6. 主控制流 (Main Execution)
